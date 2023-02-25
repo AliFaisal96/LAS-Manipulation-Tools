@@ -41,11 +41,16 @@ if __name__ == '__main__':
     # _df_to_las_conversion(df, address='../data/', name='ttlas3',
     #                       data_columns=['X', 'Y', 'Z', 'intensity', 'classification'])
 
-track1_elevation = track1[(track1['Z'] > 6900) & (track1['Z'] <= 7200)]
+np.max(track1['z'])
 
-_las_to_laz_conversion(las_file, address='C:/Users/unbre/OneDrive - UBC\Ph.D. Work\PCTool\PointCloudTool-master/Filtered Tracks', name='track1laz', do_compress=True)
+track1_elevation = track1[(track1['z'] > 736) & (track1['z'] <= 745)]
 
+_las_to_laz_conversion(track1_elevation, address='C:/Users/unbre/OneDrive - UBC\Ph.D. Work\PCTool\PointCloudTool-master/Filtered Tracks', name='track1_elevation1', do_compress=True)
 
+_df_to_las_conversion(track1_elevation,
+                      address='C:/Users/unbre/OneDrive - UBC\Ph.D. Work\PCTool\PointCloudTool-master',
+                      name='track1_elevation1', data_columns=['x', 'y', 'z', 'intensity', 'classification'
+        , 'red', 'green', 'blue'])
 
 ##DBSCAN
 
