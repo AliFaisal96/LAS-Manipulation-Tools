@@ -4,7 +4,7 @@ import laspy
 from pathlib import Path
 
 
-from src.manipulation_tools import _df_to_las_conversion
+# from src.manipulation_tools import _df_to_las_conversion
 
 import warnings
 
@@ -31,11 +31,16 @@ def _las_to_laz_conversion(las_file: laspy.LasData, address: str, name: str, do_
 
 
 if __name__ == '__main__':
-    las_file = laspy.read(
-        'C:/Users/unbre/OneDrive - UBC/Ph.D. Work/PCTool/PointCloudTool-master/Ledcor-Highway32/Track_H_20221114_192938 Profiler.zfs_0_annotated.laz')
+    # las_file = laspy.read(
+    #     'C:/Users/unbre/OneDrive - UBC/Ph.D. Work/PCTool/PointCloudTool-master/Ledcor-Highway32/Track_H_20221114_192938 Profiler.zfs_0_annotated.laz')
+    las_file = laspy.read('../../datasets/Test.las')
     df = _las_to_df(las_file)
     # df = pd.read_csv('../data/testdf.csv')
     print(df)
+    las_file2 = laspy.read('../../datasets/Tile 2 6.laz')
+    df2 = _las_to_df(las_file2)
+    # df = pd.read_csv('../data/testdf.csv')
+    print(df2)
     # _write_df_to_csv(df, '../data/', 'ttlaz')
     # _laz_to_las_conversion(las_file, '../data/', 'ttlas')
     # _df_to_las_conversion(df, address='../data/', name='ttlas3',
