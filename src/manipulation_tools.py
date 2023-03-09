@@ -6,6 +6,8 @@ from pathlib import Path
 from laspy import PointFormat
 from laspy.header import Version
 
+from src.LAS_tools import _las_to_df
+
 _standard_classes = {'never classified': [0], 'unclassified': [1], 'ground': [2], 'low vegetation': [3],
                      'medium vegetation': [4], 'high vegetation': [5], 'building': [6], 'low point': [7],
                      'high point': [8], 'water': [9], 'rail': [10], 'road surface': [11], 'bridge deck': [12],
@@ -49,13 +51,18 @@ def _df_intensity_reduction(df: pd.DataFrame, percentage: int = None, count: int
 
 def _df_to_las_conversion(df: pd.DataFrame, address: str, name: str, las_version: tuple = (1, 4), las_format: int = 7,
                           data_columns:
-                          list[str] = []):
+                          list[str] = [], scales=[0.0001, 0.0001, 0.0001]):
     header = laspy.header.LasHeader(version=Version(las_version[0], las_version[1]),
                                     point_format=PointFormat(las_format))
-    mins = np.floor(np.min(df[['X', 'Y', 'Z']].values, axis=0))
+    XYZ = np.floor(df[['x', 'y', 'z']].values / scales)
+    mins = np.min(np.floor(df[['x', 'y', 'z']].values), axis=0) // 1000 * 1000
     header.offset = mins
-    header.scale = [0.01, 0.01, 0.01]
+    header.scale = scales
     las = laspy.LasData(header)
+    XYZ -= mins
+    # las['X'] = XYZ[:, 0]
+    # las['Y'] = XYZ[:, 1]
+    # las['Z'] = XYZ[:, 2]
     for column in data_columns:
         las[column] = df[column].values
     las.write(str(Path(f'{address}') / f'{name}.las'))
@@ -63,6 +70,14 @@ def _df_to_las_conversion(df: pd.DataFrame, address: str, name: str, las_version
 
 
 if __name__ == '__main__':
-    test_classes = {'rail': 3, 'building': 1, 'water': 2}
-    df = _las_class_standardization(pd.read_csv('../data/testdf.csv'), classes_dict=test_classes)
-    print(df.classification)
+    # test_classes = {'rail': 3, 'building': 1, 'water': 2}
+    # df = _las_class_standardization(pd.read_csv('../data/testdf.csv'), classes_dict=test_classes)
+    # print(df.classification)
+    las_file = laspy.read('../../datasets/Tile 2 6.laz')
+    df = _las_to_df(las_file)
+    _df_to_las_conversion(df, address='../../datasets', name='Test',
+                          data_columns=['x','y','z','intensity', 'return_number', 'number_of_returns',
+                                        'synthetic', 'key_point', 'withheld', 'overlap', 'scanner_channel',
+                                        'scan_direction_flag', 'edge_of_flight_line', 'classification',
+                                        'user_data', 'scan_angle', 'point_source_id', 'gps_time', 'red',
+                                        'green', 'blue'])
