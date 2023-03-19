@@ -4,9 +4,9 @@ import numpy as np
 import os
 
 os.chdir("C:/Users/unbre\OneDrive - UBC\Ph.D. Work\PCTool\PointCloudTool-master")
-pwd
+
 # Load the point cloud
-pcd = o3d.io.read_point_cloud("Input/track1_filtered.ply")
+pcd = o3d.io.read_point_cloud("Input/track2_pc.ply")
 
 # Convert the point cloud to a NumPy array
 points = np.asarray(pcd.points)
@@ -61,10 +61,10 @@ points = np.asarray(pcd.points)
 # %% tiling without open3d
 
 
-def tile_point_cloud(pointss, tile_size):
+def tile_point_cloud(points, tile_size):
     # Determine the minimum and maximum values for each dimension
-    min_x, min_y, min_z = np.min(pointss, axis=0)
-    max_x, max_y, max_z = np.max(pointss, axis=0)
+    min_x, min_y, min_z = np.min(points, axis=0)
+    max_x, max_y, max_z = np.max(points, axis=0)
 
     # Compute the number of tiles along each dimension
     num_tiles_x = int(np.ceil((max_x - min_x) / tile_size))
@@ -90,19 +90,19 @@ def tile_point_cloud(pointss, tile_size):
 
                 # Extract the points that are within the bounds of the tile
                 indices = np.where(
-                    (pointss[:, 0] >= x_min) & (pointss[:, 0] < x_max) &
-                    (pointss[:, 1] >= y_min) & (pointss[:, 1] < y_max) &
-                    (pointss[:, 2] >= z_min) & (pointss[:, 2] < z_max)
+                    (points[:, 0] >= x_min) & (points[:, 0] < x_max) &
+                    (points[:, 1] >= y_min) & (points[:, 1] < y_max) &
+                    (points[:, 2] >= z_min) & (points[:, 2] < z_max)
                 )[0]
 
                 # Store the points for the current tile in the dictionary
                 tile_key = (i, j, k)
-                tiled_point_clouds[tile_key] = pointss[indices]
+                tiled_point_clouds[tile_key] = points[indices]
 
     return tiled_point_clouds
 
 
-result = tile_point_cloud(points, 50)
+result = tile_point_cloud(points, 10)
 
 # remove empty tiles (arrays shape 0)
 result = {k: v for k, v in result.items() if v.shape[0] != 0}
@@ -112,11 +112,8 @@ pc_tile_keys = np.array(list(result.keys()))
 result.values()
 result.keys()
 
-pc_tile_pts = np.array(list(result.values()), dtype=object)
-np.shape(pc_tile_pts)
-
 pc_tile_pts = np.vstack(list(result.values()))
-
+np.shape(pc_tile_pts)
 for key in result:
     print(f"{key}: {len(result[key])} values")
 

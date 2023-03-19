@@ -49,7 +49,7 @@ _las_to_laz_conversion(track1_elevation, address='C:/Users/unbre/OneDrive - UBC\
 
 _df_to_las_conversion(track1_elevation,
                       address='C:/Users/unbre/OneDrive - UBC\Ph.D. Work\PCTool\PointCloudTool-master',
-                      name='track1_elevation1', data_columns=['x', 'y', 'z', 'intensity', 'classification'
+                      name='track1_elevation1', data_columns=['X', 'Y', 'Z', 'intensity', 'classification'
         , 'red', 'green', 'blue'])
 
 ##DBSCAN
