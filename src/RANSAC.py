@@ -387,4 +387,3 @@ for tile_name in Ptcld_Tiles.keys():
     _df_to_las_conversion(df, address='Input', name=f'{tile_name}_output',
                           data_columns=['x', 'y', 'z'])
 
-    #hey, it is working. now we need to export the tiles as las files and then merge them together
