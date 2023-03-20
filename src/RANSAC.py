@@ -203,7 +203,7 @@ with open("PtCld_Tiles.pkl", "rb") as f:
 # the difference in the z values between the inliers and outliers (max z in inliers - min z in outliers)
 
 pcd = o3d.geometry.PointCloud()
-pc_array = Ptcld_Tiles[list(Ptcld_Tiles.keys())[1]]
+pc_array = Ptcld_Tiles[list(Ptcld_Tiles.keys())[2]]
 pcd.points = o3d.utility.Vector3dVector(pc_array)
 
 plane_model, inliers = pcd.segment_plane(distance_threshold=0.01, ransac_n=3, num_iterations=1000)
@@ -220,7 +220,7 @@ o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
 #
 # # this doesn't take into account the z axis
 # inlier_z = np.asarray(inlier_cloud.points)[:, 2]
-outlier_z = np.asarray(outlier_cloud.points)[:, 2]
+# outlier_z = np.asarray(outlier_cloud.points)[:, 2]
 # # distances = cdist(np.asarray(inlier_cloud.points), np.asarray(outlier_cloud.points))
 # # max_distance = np.max(distances)
 # np.average(inlier_z) - np.average(outlier_z)  # x10 for cm, x100 mm: 13 mm difference
@@ -325,7 +325,64 @@ df = pd.DataFrame(data=pc_array, columns=['x','y','z'])
 
 from manipulation_tools import _df_to_las_conversion
 
-_df_to_las_conversion(df, address='Input', name='Test',
+_df_to_las_conversion(df, address='Input', name='Test2',
                       data_columns=['x', 'y', 'z',])
 #tile1 overlaps with the original las file, so it is working and placed correctly.
 
+
+#%% loop over all tiles and export them as las files
+
+import open3d as o3d
+import numpy as np
+import pandas as pd
+from manipulation_tools import _df_to_las_conversion
+
+# Loop over point clouds
+for i in range(len(Ptcld_Tiles)):
+    # Get point cloud array
+    pc_array = Ptcld_Tiles[list(Ptcld_Tiles.keys())[i]]
+
+    # Create Open3D point cloud object
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(pc_array)
+
+    # Segment plane
+    plane_model, inliers = pcd.segment_plane(distance_threshold=0.01, ransac_n=3, num_iterations=1000)
+    inlier_cloud = pcd.select_by_index(inliers)
+    outlier_cloud = pcd.select_by_index(inliers, invert=True)
+
+    # Draw point cloud with inliers in red and outliers in grey
+    inlier_cloud.paint_uniform_color([1.0, 0, 0])  # inliers in red
+    outlier_cloud.paint_uniform_color([0.6, 0.6, 0.6])  # outliers in grey
+    o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
+
+    # Calculate maximum distance to plane
+    max_distance = max_distance_to_plane(pc_array, plane_model)
+    print(f"Maximum distance: {max_distance}")
+
+    # Convert array to pandas DataFrame
+    df = pd.DataFrame(data=pc_array, columns=['x', 'y', 'z'])
+
+    # Convert DataFrame to LAS file
+    name = f'TIle{i + 1}'
+    _df_to_las_conversion(df, address='Input', name=name, data_columns=['x', 'y', 'z'])
+
+
+for tile_name in Ptcld_Tiles.keys():
+    pc_array = Ptcld_Tiles[tile_name]
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(pc_array)
+
+    plane_model, inliers = pcd.segment_plane(distance_threshold=0.01, ransac_n=3, num_iterations=1000)
+    inlier_cloud = pcd.select_by_index(inliers)
+    outlier_cloud = pcd.select_by_index(inliers, invert=True)
+    inlier_cloud.paint_uniform_color([1.0, 0, 0])  # inliers in red
+    outlier_cloud.paint_uniform_color([0.6, 0.6, 0.6])  # outliers in grey
+
+    max_distance = max_distance_to_plane(pc_array, plane_model)
+    print(f"Maximum distance for tile {tile_name}: {max_distance}")
+
+    df = pd.DataFrame(data=pc_array, columns=['x','y','z'])
+
+    _df_to_las_conversion(df, address='Input', name=f'{tile_name}_output',
+                          data_columns=['x', 'y', 'z'])
