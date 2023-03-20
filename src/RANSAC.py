@@ -7,7 +7,7 @@ import open3d as o3d
 from Tiling import points
 
 # load the output from the file
-with open("PtCld_Tiles.pkl", "rb") as f:
+with open("Input/PtCld_Tiles.pkl", "rb") as f:
     Ptcld_Tiles = pickle.load(f)
 
 #
@@ -203,7 +203,7 @@ with open("PtCld_Tiles.pkl", "rb") as f:
 # the difference in the z values between the inliers and outliers (max z in inliers - min z in outliers)
 
 pcd = o3d.geometry.PointCloud()
-pc_array = Ptcld_Tiles[list(Ptcld_Tiles.keys())[2]]
+pc_array = Ptcld_Tiles[list(Ptcld_Tiles.keys())[12]]
 pcd.points = o3d.utility.Vector3dVector(pc_array)
 
 plane_model, inliers = pcd.segment_plane(distance_threshold=0.01, ransac_n=3, num_iterations=1000)
@@ -227,9 +227,8 @@ o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
 #
 # np.max(inlier_z)- np.min(inlier_z)
 
-import numpy as np
 
-#this calculates the maximum z distance between the plane and all outlier points
+# this calculates the maximum z distance between the plane and all outlier points
 def max_distance_to_plane(points, plane):
     """
     Calculate the maximum distance between a plane and a set of points in the z-direction.
@@ -245,40 +244,40 @@ def max_distance_to_plane(points, plane):
     return max(distances)
 
 
-# Example usage
-
 max_distance = max_distance_to_plane(pc_array, plane_model)
 print(f"Maximum distance: {max_distance}")
 
-#%%
+
+# %%
 
 # this calculates the maximum z distance between the plane and all outlier points below the plane
 def max_distance_to_plane_below(points, plane):
     """
     Calculate the maximum distance between a plane and a set of points below the plane in the z-direction.
     """
+
     def distance_to_plane(plane, point):
         """
         Calculate the distance between a plane and a point in the z-direction.
         """
-        distance = np.abs(plane[0]*point[0] + plane[1]*point[1] + plane[2]*point[2] + plane[3])
-        if plane[2] > 0 and point[2] > -plane[3]/plane[2]:
+        distance = np.abs(plane[0] * point[0] + plane[1] * point[1] + plane[2] * point[2] + plane[3])
+        if plane[2] > 0 and point[2] > -plane[3] / plane[2]:
             return 0
         return distance
 
-    distances = [distance_to_plane(plane, point) for point in points if plane[2] > 0 and point[2] <= -plane[3]/plane[2]]
+    distances = [distance_to_plane(plane, point) for point in points if
+                 plane[2] > 0 and point[2] <= -plane[3] / plane[2]]
     return max(distances)
 
 
 max_distance_below = max_distance_to_plane_below(pc_array, plane_model)
 print(f"Maximum distance below: {max_distance_below}")
 
-#both methods give the same result in this case. I think the second method is more accurate
+# both methods give the same result in this case. I think the second method is more accurate
 
-#69 cm is too high. it is illogical
+# 69 cm is too high. it is illogical
 
-#$$ lets try to export the single file as las so we need to match it with the original las file to get the columns
-
+# $$ lets try to export the single file as las so we need to match it with the original las file to get the columns
 
 
 #
@@ -316,56 +315,56 @@ print(f"Maximum distance below: {max_distance_below}")
 # print("Array y:\n", y)
 # print("Matching columns in array y:\n", matching_cols_y)
 
-#they are not matching properly, ask afshin.
-#lets try to export only the points that are in the tile and see if it works
+# they are not matching properly, ask afshin.
+# lets try to export only the points that are in the tile and see if it works
 
 import pandas as pd
 
-df = pd.DataFrame(data=pc_array, columns=['x','y','z'])
+df = pd.DataFrame(data=pc_array, columns=['x', 'y', 'z'])
 
 from manipulation_tools import _df_to_las_conversion
 
 _df_to_las_conversion(df, address='Input', name='Test2',
-                      data_columns=['x', 'y', 'z',])
-#tile1 overlaps with the original las file, so it is working and placed correctly.
+                      data_columns=['x', 'y', 'z', ])
+# tile1 overlaps with the original las file, so it is working and placed correctly.
 
 
-#%% loop over all tiles and export them as las files
+# %% loop over all tiles and export them as las files
 
 import open3d as o3d
 import numpy as np
 import pandas as pd
 from manipulation_tools import _df_to_las_conversion
 
-# Loop over point clouds
-for i in range(len(Ptcld_Tiles)):
-    # Get point cloud array
-    pc_array = Ptcld_Tiles[list(Ptcld_Tiles.keys())[i]]
-
-    # Create Open3D point cloud object
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pc_array)
-
-    # Segment plane
-    plane_model, inliers = pcd.segment_plane(distance_threshold=0.01, ransac_n=3, num_iterations=1000)
-    inlier_cloud = pcd.select_by_index(inliers)
-    outlier_cloud = pcd.select_by_index(inliers, invert=True)
-
-    # Draw point cloud with inliers in red and outliers in grey
-    inlier_cloud.paint_uniform_color([1.0, 0, 0])  # inliers in red
-    outlier_cloud.paint_uniform_color([0.6, 0.6, 0.6])  # outliers in grey
-    o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
-
-    # Calculate maximum distance to plane
-    max_distance = max_distance_to_plane(pc_array, plane_model)
-    print(f"Maximum distance: {max_distance}")
-
-    # Convert array to pandas DataFrame
-    df = pd.DataFrame(data=pc_array, columns=['x', 'y', 'z'])
-
-    # Convert DataFrame to LAS file
-    name = f'TIle{i + 1}'
-    _df_to_las_conversion(df, address='Input', name=name, data_columns=['x', 'y', 'z'])
+# # Loop over point clouds
+# for i in range(len(Ptcld_Tiles)):
+#     # Get point cloud array
+#     pc_array = Ptcld_Tiles[list(Ptcld_Tiles.keys())[i]]
+#
+#     # Create Open3D point cloud object
+#     pcd = o3d.geometry.PointCloud()
+#     pcd.points = o3d.utility.Vector3dVector(pc_array)
+#
+#     # Segment plane
+#     plane_model, inliers = pcd.segment_plane(distance_threshold=0.01, ransac_n=3, num_iterations=1000)
+#     inlier_cloud = pcd.select_by_index(inliers)
+#     outlier_cloud = pcd.select_by_index(inliers, invert=True)
+#
+#     # Draw point cloud with inliers in red and outliers in grey
+#     inlier_cloud.paint_uniform_color([1.0, 0, 0])  # inliers in red
+#     outlier_cloud.paint_uniform_color([0.6, 0.6, 0.6])  # outliers in grey
+#     o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
+#
+#     # Calculate maximum distance to plane
+#     max_distance = max_distance_to_plane(pc_array, plane_model)
+#     print(f"Maximum distance: {max_distance}")
+#
+#     # Convert array to pandas DataFrame
+#     df = pd.DataFrame(data=pc_array, columns=['x', 'y', 'z'])
+#
+#     # Convert DataFrame to LAS file
+#     name = f'TIle{i + 1}'
+#     _df_to_las_conversion(df, address='Input', name=name, data_columns=['x', 'y', 'z'])
 
 
 for tile_name in Ptcld_Tiles.keys():
@@ -382,8 +381,25 @@ for tile_name in Ptcld_Tiles.keys():
     max_distance = max_distance_to_plane(pc_array, plane_model)
     print(f"Maximum distance for tile {tile_name}: {max_distance}")
 
-    df = pd.DataFrame(data=pc_array, columns=['x','y','z'])
+    df = pd.DataFrame(data=pc_array, columns=['x', 'y', 'z'])
 
     _df_to_las_conversion(df, address='Input', name=f'{tile_name}_output',
                           data_columns=['x', 'y', 'z'])
 
+# challenge: some tiles would have abnormally sparse outlier points that would distort the results. Its a challenge
+# removing them automatically since I’d also mess up the normal outlier points outside of the plane. I’ve been
+# removing them manually for now when I know that a tile has them. however, I’m working on a way to automate this by
+# using removing these manually, then importing them again as arrays and getting the distance from the plane as normal.
+
+from LAS_tools import _las_to_df
+
+tile_abnormal= laspy.read("Input/(5, 7, 0)_output.las")
+abnormal_df = _las_to_df(tile_abnormal)
+pc_array_abnormal = abnormal_df.to_numpy()
+
+max_distance = max_distance_to_plane(pc_array_abnormal, plane_model)
+print(f"Maximum distance: {max_distance}")
+
+#went down from 16 cm to 4 cm after removing the sparse points in globalmapper. However, I need to find a way to automate this. Maybe
+#run a clustering algorithm for each array before calculating the distance to the plane. I’ll try that next. another concern is with the scattered
+#points around the road surface that might affect the rut measurements.
