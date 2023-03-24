@@ -119,7 +119,7 @@ for key in result:
 
 import pickle
 # save the output to a file called output.pkl
-with open("PtCld_Tiles.pkl", "wb") as f:
+with open("Input/PtCld_Tiles.pkl", "wb") as f:
     pickle.dump(result, f)
 # load the output from the file
 with open("output.pkl", "rb") as f:
