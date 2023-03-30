@@ -2,14 +2,14 @@ import pandas as pd
 from manipulation_tools import _df_to_las_conversion
 import open3d as o3d
 import numpy as np
-import os;
+import os
 
 print(os.getcwd())
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
 # Load the point cloud
-pcd = o3d.io.read_point_cloud("Input/track2_pc_kmeans.ply")
+pcd = o3d.io.read_point_cloud("../Input/track2_pc_kmeans.ply")
 
 # Convert the point cloud to a NumPy array
 points = np.asarray(pcd.points)
@@ -56,10 +56,10 @@ def tile_point_cloud(points, tile_size):
     return tiled_point_clouds
 
 
-result = tile_point_cloud(points, 10 / 8)
+result = tile_point_cloud(points, 10 / 10)
 
 # remove empty tiles (arrays shape 0)
-result = {k: v for k, v in result.items() if v.shape[0] != 0}
+result = {k: v for k, v in result.items() if v.shape[0] >= 4000}
 for key in result:
     print(f"{key}: {len(result[key])} values")
 
@@ -108,17 +108,17 @@ def process_point_cloud(result):
         plane_model, inliers = pcd.segment_plane(distance_threshold=0.01, ransac_n=3, num_iterations=1000)
 
         max_distance = avg_distance_to_plane_below(pc_array, plane_model)
-        print(f"Maximum distance for tile {tile_name}: {max_distance}")
+        print(f"Maximum distance for tile {tile_name} ({len(pc_array)} points): {max_distance}")
 
         df = pd.DataFrame(data=pc_array, columns=['x', 'y', 'z'])
 
-        _df_to_las_conversion(df, address='Input', name=f'{tile_name}_output',
+        _df_to_las_conversion(df, address='../Input', name=f'{tile_name}_output',
                               data_columns=['x', 'y', 'z'])
         max_distances.append(max_distance)
         tile_names.append(tile_number)
         tile_number += 1
 
-    max_distances_cm = [round(d * 100,2) for d in max_distances]
+    max_distances_cm = [round(d * 100, 2) for d in max_distances]
 
     return max_distances_cm, tile_names
 
@@ -148,10 +148,15 @@ plt.title('Max Distance for Each Tile', fontsize=16)
 plt.savefig('figure.png', dpi=300)
 plt.show()
 
-
+new_results = result.copy()
+for i, tile in enumerate(new_results.keys()):
+    new_results[tile][:, 2] = max_distances_cm[i]
 
 from pyecharts.charts import Bar
 from pyecharts import options as opts
+from pyecharts.render import make_snapshot
+from snapshot_selenium import snapshot as driver
+
 # Interactive Bar Chart
 # data
 tile_names = list(range(1, len(max_distances_cm) + 1))
@@ -196,3 +201,5 @@ bar = (
 
 # render the chart to a file
 bar.render('max_distances.html')
+
+# TODO: Check Seaborn heatmap. min max scale the max_distance_cm
