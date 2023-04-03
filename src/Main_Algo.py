@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
 # Load the point cloud
-pcd = o3d.io.read_point_cloud("../Input/track2_pc_kmeans.ply")
+pcd = o3d.io.read_point_cloud("../Input/track2_pc_kmeans1.ply")
 
 # Convert the point cloud to a NumPy array
 points = np.asarray(pcd.points)
@@ -21,8 +21,8 @@ def tile_point_cloud(points, tile_size):
     max_x, max_y, max_z = np.max(points, axis=0)
 
     # Compute the number of tiles along each dimension
-    num_tiles_x = int(np.ceil((max_x - min_x) / tile_size))
-    num_tiles_y = 1
+    num_tiles_x = 3
+    num_tiles_y = int(np.ceil((max_y - min_y) / tile_size))
     num_tiles_z = int(np.ceil((max_z - min_z) / tile_size))
 
     # Create a dictionary to store the tiled point clouds
@@ -33,10 +33,10 @@ def tile_point_cloud(points, tile_size):
         for j in range(num_tiles_y):
             for k in range(num_tiles_z):
                 # Compute the bounds of the tile
-                x_min = min_x + i * tile_size
-                x_max = x_min + tile_size
-                y_min = min_y
-                y_max = max_y
+                x_min = min_x + i * (max_x - min_x) / num_tiles_x
+                x_max = x_min + (max_x - min_x) / num_tiles_x
+                y_min = min_y + j * tile_size
+                y_max = y_min + tile_size
                 z_min = min_z + k * tile_size
                 z_max = z_min + tile_size
 
@@ -56,7 +56,7 @@ def tile_point_cloud(points, tile_size):
     return tiled_point_clouds
 
 
-result = tile_point_cloud(points, 10 / 10)
+result = tile_point_cloud(points, 10 / 7)
 
 # remove empty tiles (arrays shape 0)
 result = {k: v for k, v in result.items() if v.shape[0] >= 4000}
@@ -74,12 +74,9 @@ def avg_distance_to_plane_below(points, plane):
         Calculate the distance between a plane and a point in the z-direction.
         """
         distance = np.abs(plane[0] * point[0] + plane[1] * point[1] + plane[2] * point[2] + plane[3])
-        if plane[2] > 0 and point[2] > -plane[3] / plane[2]:
-            return 0
         return distance
 
-    distances = [distance_to_plane(plane, point) for point in points if
-                 plane[2] > 0 and point[2] <= -plane[3] / plane[2]]
+    distances = [distance_to_plane(plane, point) for point in points]
     distances.sort(reverse=True)
     return sum(distances[:10]) / 10
 
@@ -148,14 +145,9 @@ plt.title('Max Distance for Each Tile', fontsize=16)
 plt.savefig('figure.png', dpi=300)
 plt.show()
 
-new_results = result.copy()
-for i, tile in enumerate(new_results.keys()):
-    new_results[tile][:, 2] = max_distances_cm[i]
-
 from pyecharts.charts import Bar
 from pyecharts import options as opts
-from pyecharts.render import make_snapshot
-from snapshot_selenium import snapshot as driver
+
 
 # Interactive Bar Chart
 # data
@@ -203,3 +195,92 @@ bar = (
 bar.render('max_distances.html')
 
 # TODO: Check Seaborn heatmap. min max scale the max_distance_cm
+
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+from sklearn.preprocessing import minmax_scale
+
+# Convert the max_distances list to a numpy array
+max_distances_arr = np.array(max_distances_cm)
+
+# Apply min-max scaling to the max_distances array
+max_distances_scaled = minmax_scale(max_distances_arr, feature_range=(0, 100))
+
+# Replace the original max_distances list with the scaled values
+max_distances = list(max_distances_scaled)
+new_results = result.copy()  # get a new result but replace the z values with the max distances
+for i, tile in enumerate(new_results.keys()):
+    new_results[tile][:, 2] = max_distances_cm[i]
+
+###create heatmap####
+# Create a 2D array of the max distances
+max_distances = []
+
+for tile in new_results.values():
+    max_distances.append(tile[0][2])
+
+# Create a list of lists to hold the distances for each tile
+distances_by_tile = [[] for _ in range(3)]
+
+# Iterate over the distances and append them to the appropriate inner list
+for i, distance in enumerate(max_distances):
+    tile_index = i // 119  # Calculate the index of the current tile
+    distances_by_tile[tile_index].append(distance)
+
+# Stack the lists of distances horizontally using np.column_stack
+max_distances_arr = np.column_stack(distances_by_tile)
+
+# Create the heatmap using Seaborn
+fig, ax = plt.subplots()
+sns.heatmap(max_distances_arr, cmap='coolwarm', ax=ax)
+
+# Inverse the y-axis
+ax.invert_yaxis()
+
+# Add a colorbar
+cbar = ax.collections[0].colorbar
+cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
+cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} cm', f'{np.max(max_distances_arr):.2f} cm']) # add units here
+# Set the title and axis labels
+ax.set_title('Max Distance (cm) Heatmap')
+ax.set_xlabel('Tile X-axis')
+ax.set_ylabel('Tile Y-axis')
+
+# Show the plot
+plt.savefig('heatmap.png', dpi=300)
+
+plt.show()
+#####################convert the tiles with replaced z with max_distances to las files#################
+
+from sklearn.preprocessing import minmax_scale
+
+# Convert the max_distances list to a numpy array
+max_distances_arr = np.array(max_distances_cm)
+
+# Apply min-max scaling to the max_distances array
+max_distances_scaled = minmax_scale(max_distances_arr, feature_range=(0, 100))
+
+# Replace the original max_distances list with the scaled values
+max_distances = list(max_distances_scaled)
+new_results_scaled = result.copy()  # get a new result but replace the z values with the max distances
+for i, tile in enumerate(new_results.keys()):
+    new_results[tile][:, 2] = max_distances[i]
+
+def convert_tiles_las(new_results):
+
+    for tile_name in new_results.keys():
+        pc_array_new = new_results[tile_name]
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(pc_array_new)
+
+        df = pd.DataFrame(data=pc_array_new, columns=['x', 'y', 'z'])
+
+        _df_to_las_conversion(df, address='../Input', name=f'{tile_name}_output_maxdist',
+                              data_columns=['x', 'y', 'z'])
+
+
+convert_tiles_las(new_results)
+
+

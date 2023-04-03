@@ -148,8 +148,9 @@ from manipulation_tools import _df_to_las_conversion
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 import open3d as o3d
+print(os.getcwd())
 
-pcd = o3d.io.read_point_cloud("Input/track2_pc.ply")
+pcd = o3d.io.read_point_cloud("../Input/track 3/track3.ply")
 point_cloud = np.asarray(pcd.points)
 threshold = 0.1
 nbrs = NearestNeighbors(n_neighbors=5).fit(point_cloud)
@@ -164,7 +165,7 @@ mask = avg_distances < threshold
 # np.count_nonzero(mask)  # its removing the sparse points.
 
 selected_points = pcd.select_by_index(np.where(mask)[0])
-o3d.io.write_point_cloud("Input/track2_pc_kmeans.ply", selected_points)
+o3d.io.write_point_cloud("../Input/track 3/track3_kmeans.ply", selected_points)
 
 #works in removing the sparse points. however, decreasing the threshold removes many points. Here im using the KNN algorithm
 #from scikit learn to remove the sparse points by calculating the average distance of each point from its 5 nearest neighbors
