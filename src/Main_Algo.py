@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
 # Load the point cloud
-pcd = o3d.io.read_point_cloud("../Input/track2_pc_kmeans1.ply")
+pcd = o3d.io.read_point_cloud("../Input/Track 1/track1_pc_cleaned.ply")
 
 # Convert the point cloud to a NumPy array
 points = np.asarray(pcd.points)
@@ -21,7 +21,7 @@ def tile_point_cloud(points, tile_size):
     max_x, max_y, max_z = np.max(points, axis=0)
 
     # Compute the number of tiles along each dimension
-    num_tiles_x = 3
+    num_tiles_x = 2
     num_tiles_y = int(np.ceil((max_y - min_y) / tile_size))
     num_tiles_z = int(np.ceil((max_z - min_z) / tile_size))
 
@@ -56,7 +56,7 @@ def tile_point_cloud(points, tile_size):
     return tiled_point_clouds
 
 
-result = tile_point_cloud(points, 10 / 7)
+result = tile_point_cloud(points, 10 / 6.5)
 
 # remove empty tiles (arrays shape 0)
 result = {k: v for k, v in result.items() if v.shape[0] >= 4000}
@@ -66,7 +66,7 @@ for key in result:
 
 def avg_distance_to_plane_below(points, plane):
     """
-    Calculate the average distance between a plane and the farthest 5 points below the plane in the z-direction.
+    Calculate the average distance between a plane and the farthest 20 points below the plane in the z-direction.
     """
 
     def distance_to_plane(plane, point):
@@ -78,7 +78,7 @@ def avg_distance_to_plane_below(points, plane):
 
     distances = [distance_to_plane(plane, point) for point in points]
     distances.sort(reverse=True)
-    return sum(distances[:10]) / 10
+    return sum(distances[:50]) / 50
 
 
 def process_point_cloud(result):
@@ -89,7 +89,7 @@ def process_point_cloud(result):
         result (dict): A dictionary with tile names as keys and point cloud arrays as values.
 
     Returns:
-        max_distances_cm (list): A list of the maximum distances of each tile from its plane, in centimeters.
+        max_distances_mm (list): A list of the maximum distances of each tile from its plane, in centimeters.
     """
     max_distances = []
     tile_names = []
@@ -109,30 +109,30 @@ def process_point_cloud(result):
 
         df = pd.DataFrame(data=pc_array, columns=['x', 'y', 'z'])
 
-        _df_to_las_conversion(df, address='../Input', name=f'{tile_name}_output',
+        _df_to_las_conversion(df, address='../Input/Track 1', name=f'{tile_name}_output',
                               data_columns=['x', 'y', 'z'])
         max_distances.append(max_distance)
         tile_names.append(tile_number)
         tile_number += 1
 
-    max_distances_cm = [round(d * 100, 2) for d in max_distances]
+    max_distances_mm = [round(d * 1000, 2) for d in max_distances]
 
-    return max_distances_cm, tile_names
+    return max_distances_mm, tile_names
 
 
-max_distances_cm, tile_names = process_point_cloud(result)
+max_distances_mm, tile_names = process_point_cloud(result)
 
 # Define colormap
-norm = plt.Normalize(min(max_distances_cm), max(max_distances_cm))
+norm = plt.Normalize(min(max_distances_mm), max(max_distances_mm))
 cmap = cm.ScalarMappable(norm=norm, cmap=cm.Reds)
 
 # Create bar chart with colored bars
 fig, ax = plt.subplots()
-bars = ax.bar(tile_names, max_distances_cm, width=0.5)
+bars = ax.bar(tile_names, max_distances_mm, width=0.5)
 
 # Set color of bars
 for i in range(len(bars)):
-    bars[i].set_color(cmap.to_rgba(max_distances_cm[i]))
+    bars[i].set_color(cmap.to_rgba(max_distances_mm[i]))
 
 # Add colorbar legend
 cbar = fig.colorbar(cmap)
@@ -151,12 +151,12 @@ from pyecharts import options as opts
 
 # Interactive Bar Chart
 # data
-tile_names = list(range(1, len(max_distances_cm) + 1))
+tile_names = list(range(1, len(max_distances_mm) + 1))
 # create the bar chart
 bar = (
     Bar()
     .add_xaxis(tile_names)
-    .add_yaxis("Max Distance (cm)", max_distances_cm, color="#1565C0")
+    .add_yaxis("Max Distance (cm)", max_distances_mm, color="#1565C0")
     .set_global_opts(
         title_opts=opts.TitleOpts(title="Max Distance for Each Tile", subtitle="",
                                   title_textstyle_opts=opts.TextStyleOpts(font_weight='bold'),
@@ -175,7 +175,7 @@ bar = (
             name_textstyle_opts=opts.TextStyleOpts(font_weight='bold', font_size=14),
             axislabel_opts=opts.LabelOpts(font_size=14),
         ),
-        visualmap_opts=opts.VisualMapOpts(min_=min(max_distances_cm), max_=max(max_distances_cm),
+        visualmap_opts=opts.VisualMapOpts(min_=min(max_distances_mm), max_=max(max_distances_mm),
                                           range_text=['High', 'Low'],
                                           range_color=['#d94e5d', '#eac736', '#50a3ba'][::-1]),
     )
@@ -194,7 +194,9 @@ bar = (
 # render the chart to a file
 bar.render('max_distances.html')
 
-# TODO: Check Seaborn heatmap. min max scale the max_distance_cm
+
+
+# TODO: Check Seaborn heatmap. min max scale the max_distance_mm
 
 
 import seaborn as sns
@@ -203,7 +205,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import minmax_scale
 
 # Convert the max_distances list to a numpy array
-max_distances_arr = np.array(max_distances_cm)
+max_distances_arr = np.array(max_distances_mm)
 
 # Apply min-max scaling to the max_distances array
 max_distances_scaled = minmax_scale(max_distances_arr, feature_range=(0, 100))
@@ -212,7 +214,7 @@ max_distances_scaled = minmax_scale(max_distances_arr, feature_range=(0, 100))
 max_distances = list(max_distances_scaled)
 new_results = result.copy()  # get a new result but replace the z values with the max distances
 for i, tile in enumerate(new_results.keys()):
-    new_results[tile][:, 2] = max_distances_cm[i]
+    new_results[tile][:, 2] = max_distances_mm[i]
 
 ###create heatmap####
 # Create a 2D array of the max distances
@@ -222,11 +224,11 @@ for tile in new_results.values():
     max_distances.append(tile[0][2])
 
 # Create a list of lists to hold the distances for each tile
-distances_by_tile = [[] for _ in range(3)]
+distances_by_tile = [[] for _ in range(2)]
 
 # Iterate over the distances and append them to the appropriate inner list
 for i, distance in enumerate(max_distances):
-    tile_index = i // 119  # Calculate the index of the current tile
+    tile_index = i // 113  # Calculate the index of the current tile
     distances_by_tile[tile_index].append(distance)
 
 # Stack the lists of distances horizontally using np.column_stack
@@ -242,9 +244,9 @@ ax.invert_yaxis()
 # Add a colorbar
 cbar = ax.collections[0].colorbar
 cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
-cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} cm', f'{np.max(max_distances_arr):.2f} cm']) # add units here
+cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} mm', f'{np.max(max_distances_arr):.2f} mm']) # add units here
 # Set the title and axis labels
-ax.set_title('Max Distance (cm) Heatmap')
+ax.set_title('Max Distance (mm) Heatmap')
 ax.set_xlabel('Tile X-axis')
 ax.set_ylabel('Tile Y-axis')
 
@@ -257,7 +259,7 @@ plt.show()
 from sklearn.preprocessing import minmax_scale
 
 # Convert the max_distances list to a numpy array
-max_distances_arr = np.array(max_distances_cm)
+max_distances_arr = np.array(max_distances_mm)
 
 # Apply min-max scaling to the max_distances array
 max_distances_scaled = minmax_scale(max_distances_arr, feature_range=(0, 100))
@@ -277,7 +279,7 @@ def convert_tiles_las(new_results):
 
         df = pd.DataFrame(data=pc_array_new, columns=['x', 'y', 'z'])
 
-        _df_to_las_conversion(df, address='../Input', name=f'{tile_name}_output_maxdist',
+        _df_to_las_conversion(df, address='../Input/Track 1', name=f'{tile_name}_output_maxdist',
                               data_columns=['x', 'y', 'z'])
 
 

@@ -150,24 +150,28 @@ from sklearn.neighbors import NearestNeighbors
 import open3d as o3d
 print(os.getcwd())
 
-pcd = o3d.io.read_point_cloud("../Input/track 3/track3.ply")
+pcd = o3d.io.read_point_cloud("../Input/Track 1/track1_pc_cleaned.ply")
 point_cloud = np.asarray(pcd.points)
-threshold = 0.1
-nbrs = NearestNeighbors(n_neighbors=5).fit(point_cloud)
-distances, _ = nbrs.kneighbors(point_cloud)
-avg_distances = np.mean(distances, axis=1)
-mask = avg_distances < threshold
 
-# pcd.points = o3d.utility.Vector3dVector(point_cloud[mask])
-#
-# o3d.io.write_point_cloud("Input/track2_pc_kmeans4.ply", pcd)
-#
-# np.count_nonzero(mask)  # its removing the sparse points.
+radius = 0.01
+threshold = 0.005
+
+
+nbrs = NearestNeighbors(algorithm='ball_tree').fit(point_cloud)
+
+distances, _ = nbrs.radius_neighbors(point_cloud, radius=radius)
+avg_distances = [np.mean(d) if len(d) > 0 else 0 for d in distances]
+mask = np.array(avg_distances) < threshold
+
+
+
+np.count_nonzero(mask)  # its removing the sparse points.
 
 selected_points = pcd.select_by_index(np.where(mask)[0])
-o3d.io.write_point_cloud("../Input/track 3/track3_kmeans.ply", selected_points)
+o3d.io.write_point_cloud("../Input/Track 1/track1_kmeans.ply", selected_points)
 
 #works in removing the sparse points. however, decreasing the threshold removes many points. Here im using the KNN algorithm
 #from scikit learn to remove the sparse points by calculating the average distance of each point from its 5 nearest neighbors
 #and removing the points that are far away from the rest of the point cloud. I use the mask to remove those sparse points from my
 #original ply file.
+
