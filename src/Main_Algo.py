@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
 # Load the point cloud
-pcd = o3d.io.read_point_cloud("Input/Track 2/track2_cleaned.ply")
+pcd = o3d.io.read_point_cloud("Input/Track 1/track1_pc_cleaned.ply")
 
 # Convert the point cloud to a NumPy array
 points = np.asarray(pcd.points)
@@ -55,7 +55,17 @@ def tile_point_cloud(points, tile_size, num_tiles_x):
     return tiled_point_clouds
 
 
-result = tile_point_cloud(points, 10 / 6)
+def save_all_tiles_to_csv(tiled_point_clouds, output_file):
+    all_points = []
+    for tile_key, tile_points in tiled_point_clouds.items():
+        tile_df = pd.DataFrame(tile_points, columns=["x", "y", "z"])
+        tile_df["tile"] = str(tile_key)
+        all_points.append(tile_df)
+
+    combined_df = pd.concat(all_points, ignore_index=True)
+    combined_df.to_csv(output_file, index=False)
+
+result = tile_point_cloud(points, 10 / 6.5, 2)
 
 # remove empty tiles (arrays shape 0)
 result = {k: v for k, v in result.items() if v.shape[0] >= 4000}
@@ -63,6 +73,33 @@ for key in result:
     print(f"{key}: {len(result[key])} values")
 
 
+output_file = "Input/Track 1/tiled_point_clouds.csv"
+save_all_tiles_to_csv(result, output_file)
+
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+# def plot_tiles_3d(tiled_point_clouds, selected_tile_keys):
+#     fig = plt.figure()
+#     ax = fig.add_subplot(111, projection='3d')
+#
+#     for tile_key in selected_tile_keys:
+#         if tile_key in tiled_point_clouds:
+#             tile_points = tiled_point_clouds[tile_key]
+#             ax.scatter(tile_points[:, 0], tile_points[:, 1], tile_points[:, 2], label=str(tile_key))
+#
+#     ax.set_xlabel('X')
+#     ax.set_ylabel('Y')
+#     ax.set_zlabel('Z')
+#     ax.legend()
+#     plt.show()
+#
+#
+# # Select the tile keys you want to plot (use the keys from your tiled point cloud)
+# selected_tile_keys = [(0, 1, 0), (0, 2, 0), (1, 1, 0), (1, 2, 0)]
+#
+# # Plot the selected tiles
+# plot_tiles_3d(result, selected_tile_keys)
 def avg_distance_to_plane_below(points, plane):
     """
     Calculate the average distance between a plane and the farthest 20 points below the plane in the z-direction.
@@ -111,16 +148,21 @@ def process_point_cloud(result, output_dir):
 
         _df_to_las_conversion(df, address=output_dir, name=f'{tile_name}_output',
                               data_columns=['x', 'y', 'z'])
+
         max_distances.append(max_distance)
         tile_names.append(tile_number)
         tile_number += 1
 
     max_distances_mm = [round(d * 1000, 2) for d in max_distances]
+    output_df = pd.DataFrame({'Tile Name': tile_names, 'Max Distance (mm)': max_distances_mm})
+
+    # Export the DataFrame to a CSV file
+    output_df.to_csv(os.path.join(output_dir, 'distances_and_tile_names.csv'), index=False)
 
     return max_distances_mm, tile_names
 
-output_dir = "Input/Track 2"
-max_distances_mm, tile_names = process_point_cloud(result)
+output_dir = "Input/Track 1"
+max_distances_mm, tile_names = process_point_cloud(result, output_dir)
 
 # Define colormap
 norm = plt.Normalize(min(max_distances_mm), max(max_distances_mm))
@@ -224,11 +266,11 @@ for tile in new_results.values():
     max_distances.append(tile[0][2])
 
 # Create a list of lists to hold the distances for each tile
-distances_by_tile = [[] for _ in range(3)]
+distances_by_tile = [[] for _ in range(2)]
 
 # Iterate over the distances and append them to the appropriate inner list
 for i, distance in enumerate(max_distances):
-    tile_index = i // 79  # Calculate the index of the current tile
+    tile_index = i // 113  # Calculate the index of the current tile
     distances_by_tile[tile_index].append(distance)
 
 # Stack the lists of distances horizontally using np.column_stack
@@ -246,12 +288,12 @@ cbar = ax.collections[0].colorbar
 cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
 cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} mm', f'{np.max(max_distances_arr):.2f} mm']) # add units here
 # Set the title and axis labels
-ax.set_title('Max Distance (mm) Heatmap')
+ax.set_title('Mean Distance (mm) Heatmap')
 ax.set_xlabel('Tile X-axis')
 ax.set_ylabel('Tile Y-axis')
 
 # Show the plot
-plt.savefig('heatmap.png', dpi=300)
+plt.savefig('heatmap_track1.svg', format="svg")
 
 plt.show()
 #####################convert the tiles with replaced z with max_distances to las files#################
@@ -287,7 +329,7 @@ convert_tiles_las(new_results)
 
 
 ###track 2 right turn####
-pcd = o3d.io.read_point_cloud("Input/Track 2/track2_rightturn_cleaned.ply")
+pcd = o3d.io.read_point_cloud("Input/Track 2 R/track2_rightturn_cleaned.ply")
 points = np.asarray(pcd.points)
 result = tile_point_cloud(points, 10 / 7, 3)
 
@@ -296,7 +338,7 @@ result = {k: v for k, v in result.items() if v.shape[0] >= 4000}
 for key in result:
     print(f"{key}: {len(result[key])} values")
 
-output_dir = "Input/Track 2"
+output_dir = "Input/Track 2 R"
 max_distances_mm, tile_names = process_point_cloud(result, output_dir)
 
 # Define colormap
@@ -370,11 +412,105 @@ cbar = ax.collections[0].colorbar
 cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
 cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} mm', f'{np.max(max_distances_arr):.2f} mm']) # add units here
 # Set the title and axis labels
-ax.set_title('Max Distance (mm) Heatmap')
+ax.set_title('Mean Distance (mm) Heatmap')
 ax.set_xlabel('Tile X-axis')
 ax.set_ylabel('Tile Y-axis')
 
 # Show the plot
-plt.savefig('heatmap_track2_rightturn.png', dpi=300)
+plt.savefig('heatmap_track2_rightturn.svg', format="svg")
 
 plt.show()
+
+###track 2 left turn####
+pcd = o3d.io.read_point_cloud("Input/Track 2 L/track2_leftturn_cleaned.ply")
+points = np.asarray(pcd.points)
+result = tile_point_cloud(points, 10 / 9, 3)
+
+# remove empty tiles (arrays shape 0)
+result = {k: v for k, v in result.items() if v.shape[0] >= 1000}
+for key in result:
+    print(f"{key}: {len(result[key])} values")
+
+output_dir = "Input/Track 2 L"
+max_distances_mm, tile_names = process_point_cloud(result, output_dir)
+
+# Define colormap
+norm = plt.Normalize(min(max_distances_mm), max(max_distances_mm))
+cmap = cm.ScalarMappable(norm=norm, cmap=cm.Reds)
+
+# Create bar chart with colored bars
+fig, ax = plt.subplots()
+bars = ax.bar(tile_names, max_distances_mm, width=0.5)
+
+# Set color of bars
+for i in range(len(bars)):
+    bars[i].set_color(cmap.to_rgba(max_distances_mm[i]))
+
+# Add colorbar legend
+cbar = fig.colorbar(cmap)
+cbar.set_label('Max Distance (mm)', fontsize=14)
+
+# Add labels and title to chart
+plt.xlabel('Tile', fontsize=14)
+plt.ylabel('Max Distance (mm)', fontsize=14)
+plt.title('Max Distance for Each Tile', fontsize=16)
+plt.savefig('figure.png', dpi=300)
+plt.show()
+
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+from sklearn.preprocessing import minmax_scale
+
+# Convert the max_distances list to a numpy array
+max_distances_arr = np.array(max_distances_mm)
+
+# Apply min-max scaling to the max_distances array
+max_distances_scaled = minmax_scale(max_distances_arr, feature_range=(0, 100))
+
+# Replace the original max_distances list with the scaled values
+max_distances = list(max_distances_scaled)
+new_results = result.copy()  # get a new result but replace the z values with the max distances
+for i, tile in enumerate(new_results.keys()):
+    new_results[tile][:, 2] = max_distances_mm[i]
+
+###create heatmap####
+# Create a 2D array of the max distances
+max_distances = []
+
+for tile in new_results.values():
+    max_distances.append(tile[0][2])
+
+# Create a list of lists to hold the distances for each tile
+distances_by_tile = [[] for _ in range(3)]
+
+# Iterate over the distances and append them to the appropriate inner list
+for i, distance in enumerate(max_distances):
+    tile_index = i // 56  # Calculate the index of the current tile
+    distances_by_tile[tile_index].append(distance)
+
+# Stack the lists of distances horizontally using np.column_stack
+max_distances_arr = np.column_stack(distances_by_tile)
+
+# Create the heatmap using Seaborn
+fig, ax = plt.subplots()
+sns.heatmap(max_distances_arr, cmap='coolwarm', ax=ax)
+
+# Inverse the y-axis
+ax.invert_yaxis()
+
+# Add a colorbar
+cbar = ax.collections[0].colorbar
+cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
+cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} mm', f'{np.max(max_distances_arr):.2f} mm']) # add units here
+# Set the title and axis labels
+ax.set_title('Mean Distance (mm) Heatmap')
+ax.set_xlabel('Tile X-axis')
+ax.set_ylabel('Tile Y-axis')
+
+# Show the plot
+plt.savefig('heatmap_track2_leftturn.svg', format="svg")
+
+plt.show()
+
