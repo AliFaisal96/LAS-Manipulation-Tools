@@ -144,10 +144,10 @@ def process_point_cloud(result, output_dir):
         max_distance = avg_distance_to_plane_below(pc_array, plane_model)
         print(f"Maximum distance for tile {tile_name} ({len(pc_array)} points): {max_distance}")
 
-        df = pd.DataFrame(data=pc_array, columns=['x', 'y', 'z'])
-
-        _df_to_las_conversion(df, address=output_dir, name=f'{tile_name}_output',
-                              data_columns=['x', 'y', 'z'])
+        # df = pd.DataFrame(data=pc_array, columns=['x', 'y', 'z'])
+        #
+        # _df_to_las_conversion(df, address=output_dir, name=f'{tile_name}_output',
+        #                       data_columns=['x', 'y', 'z'])
 
         max_distances.append(max_distance)
         tile_names.append(tile_number)
@@ -287,11 +287,22 @@ ax.invert_yaxis()
 cbar = ax.collections[0].colorbar
 cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
 cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} mm', f'{np.max(max_distances_arr):.2f} mm']) # add units here
+
 # Set the title and axis labels
 ax.set_title('Mean Distance (mm) Heatmap')
-ax.set_xlabel('Tile X-axis')
-ax.set_ylabel('Tile Y-axis')
+# ax.set_xlabel('Lane Tile')
+ax.set_ylabel('Longitudinal Distance (m)')
+# Update the x-axis tick labels
+x_tick_labels = ['Left Lane', 'Right Lane']  # Update these labels as needed
+ax.set_xticklabels(x_tick_labels)
 
+# Update the y-axis tick labels
+y_tick_labels = [0, 13, 26, 39, 52, 65, 77, 90, 103, 116, 129, 142, 155, 168, 181]
+
+# Set the number of y-axis ticks to match the number of tick labels
+num_y_ticks = len(y_tick_labels)
+ax.set_yticks(np.linspace(0, len(max_distances_arr) - 1, num_y_ticks))
+ax.set_yticklabels(y_tick_labels)
 # Show the plot
 plt.savefig('heatmap_track1.svg', format="svg")
 
@@ -341,28 +352,28 @@ for key in result:
 output_dir = "Input/Track 2 R"
 max_distances_mm, tile_names = process_point_cloud(result, output_dir)
 
-# Define colormap
-norm = plt.Normalize(min(max_distances_mm), max(max_distances_mm))
-cmap = cm.ScalarMappable(norm=norm, cmap=cm.Reds)
-
-# Create bar chart with colored bars
-fig, ax = plt.subplots()
-bars = ax.bar(tile_names, max_distances_mm, width=0.5)
-
-# Set color of bars
-for i in range(len(bars)):
-    bars[i].set_color(cmap.to_rgba(max_distances_mm[i]))
-
-# Add colorbar legend
-cbar = fig.colorbar(cmap)
-cbar.set_label('Max Distance (mm)', fontsize=14)
-
-# Add labels and title to chart
-plt.xlabel('Tile', fontsize=14)
-plt.ylabel('Max Distance (mm)', fontsize=14)
-plt.title('Max Distance for Each Tile', fontsize=16)
-plt.savefig('figure.png', dpi=300)
-plt.show()
+# # Define colormap
+# norm = plt.Normalize(min(max_distances_mm), max(max_distances_mm))
+# cmap = cm.ScalarMappable(norm=norm, cmap=cm.Reds)
+#
+# # Create bar chart with colored bars
+# fig, ax = plt.subplots()
+# bars = ax.bar(tile_names, max_distances_mm, width=0.5)
+#
+# # Set color of bars
+# for i in range(len(bars)):
+#     bars[i].set_color(cmap.to_rgba(max_distances_mm[i]))
+#
+# # Add colorbar legend
+# cbar = fig.colorbar(cmap)
+# cbar.set_label('Max Distance (mm)', fontsize=14)
+#
+# # Add labels and title to chart
+# plt.xlabel('Tile', fontsize=14)
+# plt.ylabel('Max Distance (mm)', fontsize=14)
+# plt.title('Max Distance for Each Tile', fontsize=16)
+# plt.savefig('figure.png', dpi=300)
+# plt.show()
 
 
 import seaborn as sns
@@ -413,14 +424,22 @@ cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
 cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} mm', f'{np.max(max_distances_arr):.2f} mm']) # add units here
 # Set the title and axis labels
 ax.set_title('Mean Distance (mm) Heatmap')
-ax.set_xlabel('Tile X-axis')
-ax.set_ylabel('Tile Y-axis')
+# ax.set_xlabel('Lane Tile')
+ax.set_ylabel('Longitudinal Distance (m)')
+# Update the x-axis tick labels
+x_tick_labels = ['Left Lane', 'Middle Lane', "Right Lane"]  # Update these labels as needed
+ax.set_xticklabels(x_tick_labels)
 
+# Update the y-axis tick labels
+y_tick_labels = [0, 7, 14, 21, 28, 34, 41, 48, 55, 62, 69, 76, 83, 89, 96]
+# Set the number of y-axis ticks to match the number of tick labels
+num_y_ticks = len(y_tick_labels)
+ax.set_yticks(np.linspace(0, len(max_distances_arr) - 1, num_y_ticks))
+ax.set_yticklabels(y_tick_labels)
 # Show the plot
-plt.savefig('heatmap_track2_rightturn.svg', format="svg")
+plt.savefig('heatmap_right_track2.svg', format="svg")
 
 plt.show()
-
 ###track 2 left turn####
 pcd = o3d.io.read_point_cloud("Input/Track 2 L/track2_leftturn_cleaned.ply")
 points = np.asarray(pcd.points)
@@ -434,28 +453,28 @@ for key in result:
 output_dir = "Input/Track 2 L"
 max_distances_mm, tile_names = process_point_cloud(result, output_dir)
 
-# Define colormap
-norm = plt.Normalize(min(max_distances_mm), max(max_distances_mm))
-cmap = cm.ScalarMappable(norm=norm, cmap=cm.Reds)
-
-# Create bar chart with colored bars
-fig, ax = plt.subplots()
-bars = ax.bar(tile_names, max_distances_mm, width=0.5)
-
-# Set color of bars
-for i in range(len(bars)):
-    bars[i].set_color(cmap.to_rgba(max_distances_mm[i]))
-
-# Add colorbar legend
-cbar = fig.colorbar(cmap)
-cbar.set_label('Max Distance (mm)', fontsize=14)
-
-# Add labels and title to chart
-plt.xlabel('Tile', fontsize=14)
-plt.ylabel('Max Distance (mm)', fontsize=14)
-plt.title('Max Distance for Each Tile', fontsize=16)
-plt.savefig('figure.png', dpi=300)
-plt.show()
+# # Define colormap
+# norm = plt.Normalize(min(max_distances_mm), max(max_distances_mm))
+# cmap = cm.ScalarMappable(norm=norm, cmap=cm.Reds)
+#
+# # Create bar chart with colored bars
+# fig, ax = plt.subplots()
+# bars = ax.bar(tile_names, max_distances_mm, width=0.5)
+#
+# # Set color of bars
+# for i in range(len(bars)):
+#     bars[i].set_color(cmap.to_rgba(max_distances_mm[i]))
+#
+# # Add colorbar legend
+# cbar = fig.colorbar(cmap)
+# cbar.set_label('Max Distance (mm)', fontsize=14)
+#
+# # Add labels and title to chart
+# plt.xlabel('Tile', fontsize=14)
+# plt.ylabel('Max Distance (mm)', fontsize=14)
+# plt.title('Max Distance for Each Tile', fontsize=16)
+# plt.savefig('figure.png', dpi=300)
+# plt.show()
 
 
 import seaborn as sns
@@ -506,11 +525,20 @@ cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
 cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} mm', f'{np.max(max_distances_arr):.2f} mm']) # add units here
 # Set the title and axis labels
 ax.set_title('Mean Distance (mm) Heatmap')
-ax.set_xlabel('Tile X-axis')
-ax.set_ylabel('Tile Y-axis')
+# ax.set_xlabel('Lane Tile')
+ax.set_ylabel('Longitudinal Distance (m)')
+# Update the x-axis tick labels
+x_tick_labels = ['Left-turn Lane', 'Middle Lane', "Right Lane"]  # Update these labels as needed
+ax.set_xticklabels(x_tick_labels)
 
+# Update the y-axis tick labels
+y_tick_labels = [ 0, 4, 9, 13, 18, 22, 27, 31, 35, 40, 44, 49, 53, 58, 62]
+
+# Set the number of y-axis ticks to match the number of tick labels
+num_y_ticks = len(y_tick_labels)
+ax.set_yticks(np.linspace(0, len(max_distances_arr) - 1, num_y_ticks))
+ax.set_yticklabels(y_tick_labels)
 # Show the plot
-plt.savefig('heatmap_track2_leftturn.svg', format="svg")
+plt.savefig('heatmap_left_track2.svg', format="svg")
 
 plt.show()
-
