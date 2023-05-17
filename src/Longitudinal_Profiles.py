@@ -1,16 +1,16 @@
+import os
+
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
 import open3d as o3d
 import matplotlib.pyplot as plt
-from scipy.integrate import odeint
+import argparse
 
-
-# Load the point cloud
-pcd = o3d.io.read_point_cloud("Input/Track 1/track1_pc_cleaned.ply")
-
-# Convert the point cloud to a NumPy array
-points = np.asarray(pcd.points)
+def load_point_cloud(file_path):
+    pcd = o3d.io.read_point_cloud(file_path)
+    points = np.asarray(pcd.points)
+    return points
 
 def array_to_dataframe(point_cloud_array):
     data = pd.DataFrame(point_cloud_array, columns=["X", "Y", "Z"])
@@ -29,7 +29,7 @@ def interpolate_profiles(data, spacing, wheel_paths=True):
             if not profile_data.empty and unique_y_count >= 2:
                 y = profile_data["Y"].values
                 z = profile_data["Z"].values
-                y_new = np.linspace(y_min, y_max, num=400)
+                y_new = np.linspace(y_min, y_max, num=100)
                 z_new = np.interp(y_new, y, z)
                 profile = np.column_stack((y_new, z_new))
                 profiles.append(profile)
@@ -55,6 +55,16 @@ def filter_profiles(profiles, indices_to_remove, remove_last_point=True):
 
     return filtered_profiles
 
+def normalize_profiles(profiles):
+    normalized_profiles = []
+    for profile in profiles:
+        y_min = profile[:, 0].min()
+        z_min = profile[:, 1].min()
+        y_normalized = profile[:, 0] - y_min
+        z_normalized = profile[:, 1] - z_min
+        normalized_profile = np.column_stack((y_normalized, z_normalized))
+        normalized_profiles.append(normalized_profile)
+    return normalized_profiles
 def save_profiles(profiles):
     for i, profile in enumerate(profiles):
         filename = f"Track 1_Profile{i+1}.txt"
@@ -70,53 +80,64 @@ def visualize_profiles(profiles):
     plt.title('Longitudinal Profiles')
     plt.legend()
     plt.show()
-def main():
-    point_cloud_array = points
-    point_cloud_data = array_to_dataframe(points)
+
+os.getcwd()
+file_path = "Input/BCMoTI/Section 2/Tile_10-2.ply"
+output_dir = "Outputs/"
+profiles_to_remove = [0, 1, 2, 6, 7, 8]
+spacing = 1.5
+window_size = 1
+
+
+def main(file_path, output_dir, profiles_to_remove, spacing, window_size, remove_last_point=True):
+    # Load point cloud data
+    point_cloud_array = load_point_cloud(file_path)
+    point_cloud_data = array_to_dataframe(point_cloud_array)
     point_cloud_data = clean_data(point_cloud_data)
 
     # Interpolate profiles along wheel paths
-    spacing = 1  # Adjust as needed
     profiles = interpolate_profiles(point_cloud_data, spacing)
 
     # Filter out specific profiles
-    profiles_to_remove = [0,11]  # Use zero-based indices for profiles 1, 2, and 23
     filtered_profiles = filter_profiles(profiles, profiles_to_remove, remove_last_point=True)
 
     # Normalize profiles
-    normalized_profiles = []
-    for profile in filtered_profiles:
-        y_min = profile[:, 0].min()
-        z_min = profile[:, 1].min()
-        y_normalized = profile[:, 0] - y_min
-        z_normalized = profile[:, 1] - z_min
-        normalized_profile = np.column_stack((y_normalized, z_normalized))
-        normalized_profiles.append(normalized_profile)
+    normalized_profiles = normalize_profiles(filtered_profiles)
 
-        # Apply moving average filter to the normalized profiles
-        window_size = 3  # Adjust as needed
-        smoothed_profiles = []
-        for profile in normalized_profiles:
-            smoothed_profile = np.zeros_like(profile)
-            smoothed_profile[:, 0] = profile[:, 0]
-            smoothed_profile[:, 1] = np.convolve(profile[:, 1], np.ones(window_size) / window_size, mode='same')
-            smoothed_profiles.append(smoothed_profile)
+    # Apply moving average filter to the normalized profiles
+    smoothed_profiles = []
+    for profile in normalized_profiles:
+        smoothed_profile = np.zeros_like(profile)
+        smoothed_profile[:, 0] = profile[:, 0]
+        smoothed_profile[:, 1] = np.convolve(profile[:, 1], np.ones(window_size) / window_size, mode='same')
+        smoothed_profiles.append(smoothed_profile)
 
-        for i in range(len(smoothed_profiles)):
-            smoothed_profiles[i] = np.delete(smoothed_profiles[i], -1, axis=0)
-            smoothed_profiles[i] = np.delete(smoothed_profiles[i], -1, axis=0)
+    # Remove the last two points from each profile
+    smoothed_profiles = [profile[:-2] for profile in smoothed_profiles]
 
-    # Visualize the normalized profiles
+    # Visualize the smoothed profiles
     visualize_profiles(smoothed_profiles)
 
-# Save normalized profiles to text files
+    # Save the smoothed profiles to text files
     for i, profile in enumerate(smoothed_profiles):
-        filename = f"Input/Track 1 Profiles/Track1_Profile{i + 1}.txt"
+        filename = f"{output_dir}/Profile{i+1}.txt"
         np.savetxt(filename, profile)
 
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Process point cloud data and generate longitudinal profiles.")
+    parser.add_argument("--input-file", required=True, help="Path to the input point cloud file")
+    parser.add_argument("--output-dir", required=True, help="Path to the output directory")
+    parser.add_argument("--remove", nargs="+", type=int, default=[0, 11], help="Indices of profiles to remove")
+    parser.add_argument("--spacing", type=int, default=1, help="Spacing between profile sections")
+    parser.add_argument("--window_size", type=int, default=3, help="Window size for the moving average filter")
+    parser.add_argument("--remove_last_point", action="store_true", default=False, help="Remove the last point in each profile")
+    args = parser.parse_args()
+
+    main(args.input_file, args.output_dir, args.remove, args.spacing, args.window_size, args.remove_last_point)
 
 
-df = pd.read_csv('iri/python/output10.txt', sep='\s+')
+
+
+df = pd.read_csv('Outputs/Profiles/BCMoTI_Profiles/Section 2/Results/output3.txt', sep='\s+')
 iri_values = df['IRI value']

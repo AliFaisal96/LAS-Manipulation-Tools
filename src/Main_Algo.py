@@ -144,10 +144,10 @@ def process_point_cloud(result, output_dir):
         max_distance = avg_distance_to_plane_below(pc_array, plane_model)
         print(f"Maximum distance for tile {tile_name} ({len(pc_array)} points): {max_distance}")
 
-        # df = pd.DataFrame(data=pc_array, columns=['x', 'y', 'z'])
-        #
-        # _df_to_las_conversion(df, address=output_dir, name=f'{tile_name}_output',
-        #                       data_columns=['x', 'y', 'z'])
+        df = pd.DataFrame(data=pc_array, columns=['x', 'y', 'z'])
+
+        _df_to_las_conversion(df, address=output_dir, name=f'{tile_name}_output',
+                              data_columns=['x', 'y', 'z'])
 
         max_distances.append(max_distance)
         tile_names.append(tile_number)
@@ -542,3 +542,21 @@ ax.set_yticklabels(y_tick_labels)
 plt.savefig('heatmap_left_track2.svg', format="svg")
 
 plt.show()
+
+
+##BCMoTI Section 2 Classified
+import numpy as np
+import open3d as o3d
+import pandas as pd
+pcd = o3d.io.read_point_cloud("Input/BCMoTI/Section 2/Tile_10-2.ply")
+points = np.asarray(pcd.points)
+result = tile_point_cloud(points, 10, 2)
+
+# remove empty tiles (arrays shape 0)
+result = {k: v for k, v in result.items() if v.shape[0] >= 1000}
+for key in result:
+    print(f"{key}: {len(result[key])} values")
+
+output_dir = "Input/BCMoTI/Section 2"
+max_distances_mm, tile_names = process_point_cloud(result, output_dir)
+
