@@ -548,6 +548,7 @@ plt.show()
 import numpy as np
 import open3d as o3d
 import pandas as pd
+from manipulation_tools import _df_to_las_conversion
 pcd = o3d.io.read_point_cloud("Input/BCMoTI/Section 2/Tile_10-2.ply")
 points = np.asarray(pcd.points)
 result = tile_point_cloud(points, 10, 2)
@@ -560,3 +561,82 @@ for key in result:
 output_dir = "Input/BCMoTI/Section 2"
 max_distances_mm, tile_names = process_point_cloud(result, output_dir)
 
+##Alberta Dataset L1L2
+import numpy as np
+import open3d as o3d
+import pandas as pd
+import os
+import matplotlib.pyplot as plt
+from manipulation_tools import _df_to_las_conversion
+import seaborn as sns
+pcd = o3d.io.read_point_cloud("Input/Alberta/Road_L1L2.ply")
+points = np.asarray(pcd.points)
+result = tile_point_cloud(points, 10, 2)
+
+# remove empty tiles (arrays shape 0)
+result = {k: v for k, v in result.items() if v.shape[0] >= 1000}
+for key in result:
+    print(f"{key}: {len(result[key])} values")
+
+output_dir = "Input/Alberta"
+max_distances_mm, tile_names = process_point_cloud(result, output_dir)
+# Convert the max_distances list to a numpy array
+max_distances_arr = np.array(max_distances_mm)
+
+# Apply min-max scaling to the max_distances array
+# max_distances_scaled = minmax_scale(max_distances_arr, feature_range=(0, 100))
+
+# Replace the original max_distances list with the scaled values
+# max_distances = list(max_distances_scaled)
+new_results = result.copy()  # get a new result but replace the z values with the max distances
+for i, tile in enumerate(new_results.keys()):
+    new_results[tile][:, 2] = max_distances_mm[i]
+
+###create heatmap####
+# Create a 2D array of the max distances
+max_distances = []
+
+for tile in new_results.values():
+    max_distances.append(tile[0][2])
+
+# Create a list of lists to hold the distances for each tile
+distances_by_tile = [[] for _ in range(2)]
+
+# Iterate over the distances and append them to the appropriate inner list
+for i, distance in enumerate(max_distances):
+    tile_index = i // 245  # Calculate the index of the current tile
+    distances_by_tile[tile_index].append(distance)
+
+# Stack the lists of distances horizontally using np.column_stack
+max_distances_arr = np.column_stack(distances_by_tile)
+
+# Create the heatmap using Seaborn
+fig, ax = plt.subplots()
+sns.heatmap(max_distances_arr, cmap='coolwarm', ax=ax)
+
+# Inverse the y-axis
+ax.invert_yaxis()
+
+# Add a colorbar
+cbar = ax.collections[0].colorbar
+cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
+cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} mm', f'{np.max(max_distances_arr):.2f} mm']) # add units here
+# Set the title and axis labels
+ax.set_title('Mean Distance (mm) Heatmap')
+# ax.set_xlabel('Lane Tile')
+ax.set_ylabel('Longitudinal Distance (m)')
+# Update the x-axis tick labels
+x_tick_labels = ['Left-turn Lane', "Right Lane"]  # Update these labels as needed
+ax.set_xticklabels(x_tick_labels)
+
+# Update the y-axis tick labels
+# y_tick_labels = [ 0, 4, 9, 13, 18, 22, 27, 31, 35, 40, 44, 49, 53, 58, 62]
+#
+# # Set the number of y-axis ticks to match the number of tick labels
+# num_y_ticks = len(y_tick_labels)
+# ax.set_yticks(np.linspace(0, len(max_distances_arr) - 1, num_y_ticks))
+# ax.set_yticklabels(y_tick_labels)
+# # Show the plot
+# plt.savefig('heatmap_left_track2.svg', format="svg")
+
+plt.show()

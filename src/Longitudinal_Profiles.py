@@ -82,9 +82,9 @@ def visualize_profiles(profiles):
     plt.show()
 
 os.getcwd()
-file_path = "Input/BCMoTI/Section 2/Tile_10-2.ply"
+file_path = "Input/Alberta/Road_L1L2.ply"
 output_dir = "Outputs/"
-profiles_to_remove = [0, 1, 2, 6, 7, 8]
+profiles_to_remove = [0,6]
 spacing = 1.5
 window_size = 1
 
