@@ -3,10 +3,11 @@ from manipulation_tools import _df_to_las_conversion
 import open3d as o3d
 import numpy as np
 import os
-
 print(os.getcwd())
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Load the point cloud
 pcd = o3d.io.read_point_cloud("Input/Track 1/track1_pc_cleaned.ply")
@@ -76,8 +77,6 @@ for key in result:
 output_file = "Input/Track 1/tiled_point_clouds.csv"
 save_all_tiles_to_csv(result, output_file)
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 # def plot_tiles_3d(tiled_point_clouds, selected_tile_keys):
 #     fig = plt.figure()
@@ -562,13 +561,6 @@ output_dir = "Input/BCMoTI/Section 2"
 max_distances_mm, tile_names = process_point_cloud(result, output_dir)
 
 ##Alberta Dataset L1L2
-import numpy as np
-import open3d as o3d
-import pandas as pd
-import os
-import matplotlib.pyplot as plt
-from manipulation_tools import _df_to_las_conversion
-import seaborn as sns
 pcd = o3d.io.read_point_cloud("Input/Alberta/Road_L1L2.ply")
 points = np.asarray(pcd.points)
 result = tile_point_cloud(points, 10, 2)
@@ -639,4 +631,87 @@ ax.set_xticklabels(x_tick_labels)
 # # Show the plot
 # plt.savefig('heatmap_left_track2.svg', format="svg")
 
+plt.show()
+
+
+#%%Miette Road
+pcd = o3d.io.read_point_cloud("Input/Miette Road/miette_road.ply")
+points = np.asarray(pcd.points)
+result = tile_point_cloud(points, 1, 2)
+
+# remove empty tiles (arrays shape 0)
+result = {k: v for k, v in result.items() if v.shape[0] >= 1000}
+for key in result:
+    print(f"{key}: {len(result[key])} values")
+
+output_dir = "Input/Miette Road/outputs"
+max_distances_mm, tile_names = process_point_cloud(result, output_dir)
+# Convert the max_distances list to a numpy array
+max_distances_arr = np.array(max_distances_mm)
+
+# Apply min-max scaling to the max_distances array
+# max_distances_scaled = minmax_scale(max_distances_arr, feature_range=(0, 100))
+
+# Replace the original max_distances list with the scaled values
+# max_distances = list(max_distances_scaled)
+new_results = result.copy()  # get a new result but replace the z values with the max distances
+for i, tile in enumerate(new_results.keys()):
+    new_results[tile][:, 2] = max_distances_mm[i]
+
+###create heatmap####
+# Create a 2D array of the max distances
+max_distances = []
+
+for tile in new_results.values():
+    max_distances.append(tile[0][2])
+
+# Create a list of lists to hold the distances for each tile
+distances_by_tile = [[] for _ in range(2)]
+
+# Iterate over the distances and append them to the appropriate inner list
+for i, distance in enumerate(max_distances):
+    tile_index = i // 130  # Calculate the index of the current tile
+    distances_by_tile[tile_index].append(distance)
+
+# Stack the lists of distances horizontally using np.column_stack
+max_distances_arr = np.column_stack(distances_by_tile)
+
+# Create the heatmap using Seaborn
+fig, ax = plt.subplots()
+sns.heatmap(max_distances_arr, cmap='coolwarm', ax=ax)
+
+# Inverse the y-axis
+ax.invert_yaxis()
+
+# Add a colorbar
+cbar = ax.collections[0].colorbar
+cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
+cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} mm', f'{np.max(max_distances_arr):.2f} mm']) # add units here
+# Set the title and axis labels
+ax.set_title('Mean Distance (mm) Heatmap')
+# ax.set_xlabel('Lane Tile')
+ax.set_ylabel('Longitudinal Distance (m)')
+# Update the x-axis tick labels
+x_tick_labels = ['Left Lane', "Right Lane"]  # Update these labels as needed
+ax.set_xticklabels(x_tick_labels)
+
+#Update the y-axis tick labels
+road_length = 130  # Length of the road in meters
+num_ticks = 15  # Number of tick labels
+
+interval = road_length / (num_ticks - 1)  # Calculate the interval between each tick
+
+# Generate the tick labels based on the interval
+y_tick_labels = [int(i * interval) for i in range(num_ticks)]
+
+# Add the unit of measurement to each tick label
+y_tick_labels = [f'{label} m' for label in y_tick_labels]
+
+# Set the number of y-axis ticks to match the number of tick labels
+num_y_ticks = len(y_tick_labels)
+ax.set_yticks(np.linspace(0, len(max_distances_arr) - 1, num_y_ticks))
+ax.set_yticklabels(y_tick_labels)
+
+# Show the plot
+plt.savefig('Miette_LL.svg', format="svg")
 plt.show()
