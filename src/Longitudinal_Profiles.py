@@ -6,6 +6,10 @@ from scipy.interpolate import interp1d
 import open3d as o3d
 import matplotlib.pyplot as plt
 import argparse
+new_directory = 'C:/Users/unbre\OneDrive - UBC\Ph.D. Work\PCTool\PointCloudTool-master'
+os.chdir(new_directory)
+print(os.getcwd())
+
 
 def load_point_cloud(file_path):
     pcd = o3d.io.read_point_cloud(file_path)
@@ -29,7 +33,7 @@ def interpolate_profiles(data, spacing, wheel_paths=True):
             if not profile_data.empty and unique_y_count >= 2:
                 y = profile_data["Y"].values
                 z = profile_data["Z"].values
-                y_new = np.linspace(y_min, y_max, num=100)
+                y_new = np.linspace(y_min, y_max, num=520) #elevation subsampled at 0.25 m based on Soyer's paper.
                 z_new = np.interp(y_new, y, z)
                 profile = np.column_stack((y_new, z_new))
                 profiles.append(profile)
@@ -79,15 +83,19 @@ def visualize_profiles(profiles):
     plt.ylabel('Elevation (m)')
     plt.title('Longitudinal Profiles')
     plt.legend()
+    plt.savefig('Miette_Profiles.svg', format="svg")
+    plt.savefig('Miette_Profiles.png', format="png")
+
     plt.show()
 
-os.getcwd()
-file_path = "Input/Alberta/Road_L1L2.ply"
-output_dir = "Outputs/"
-profiles_to_remove = [0,6]
-spacing = 1.5
-window_size = 1
-
+file_path = "Input/Miette Road/miette_road.ply"
+output_dir = "output_figures/Profiles/Miette_Road"
+profiles_to_remove = []
+spacing = 0.6
+# filter_length = 0.25  # Moving average filter length in meters
+# num_points_per_profile = 100  # Number of points in each profile
+# profile_length = 130
+# window_size = int(filter_length / (profile_length / num_points_per_profile))
 
 def main(file_path, output_dir, profiles_to_remove, spacing, window_size, remove_last_point=True):
     # Load point cloud data
@@ -107,9 +115,7 @@ def main(file_path, output_dir, profiles_to_remove, spacing, window_size, remove
     # Apply moving average filter to the normalized profiles
     smoothed_profiles = []
     for profile in normalized_profiles:
-        smoothed_profile = np.zeros_like(profile)
-        smoothed_profile[:, 0] = profile[:, 0]
-        smoothed_profile[:, 1] = np.convolve(profile[:, 1], np.ones(window_size) / window_size, mode='same')
+        smoothed_profile = profile.copy()
         smoothed_profiles.append(smoothed_profile)
 
     # Remove the last two points from each profile
@@ -122,6 +128,7 @@ def main(file_path, output_dir, profiles_to_remove, spacing, window_size, remove
     for i, profile in enumerate(smoothed_profiles):
         filename = f"{output_dir}/Profile{i+1}.txt"
         np.savetxt(filename, profile)
+
 
 
 if __name__ == "__main__":
@@ -139,5 +146,5 @@ if __name__ == "__main__":
 
 
 
-df = pd.read_csv('Outputs/Profiles/BCMoTI_Profiles/Section 2/Results/output3.txt', sep='\s+')
+df = pd.read_csv('output_figures/Profiles/Miette_Road/Results/output10.txt', sep='\s+')
 iri_values = df['IRI value']
