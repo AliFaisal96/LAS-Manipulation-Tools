@@ -3,11 +3,13 @@ from manipulation_tools import _df_to_las_conversion
 import open3d as o3d
 import numpy as np
 import os
-print(os.getcwd())
-import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.preprocessing import minmax_scale
+
+print(os.getcwd())
+
 
 # Load the point cloud
 pcd = o3d.io.read_point_cloud("Input/Track 1/track1_pc_cleaned.ply")
@@ -337,9 +339,83 @@ def convert_tiles_las(new_results):
 
 convert_tiles_las(new_results)
 
+#%% Track 1
+pcd = o3d.io.read_point_cloud("Input/Hwy 32/Track 1/track1_pc_cleaned.ply")
+points = np.asarray(pcd.points)
+result = tile_point_cloud(points, 10 / 6.5, 2)
 
-###track 2 right turn####
-pcd = o3d.io.read_point_cloud("Input/Track 2 R/track2_rightturn_cleaned.ply")
+# remove empty tiles (arrays shape 0)
+result = {k: v for k, v in result.items() if v.shape[0] >= 4000}
+for key in result:
+    print(f"{key}: {len(result[key])} values")
+
+output_dir = "Input/Hwy 32/Track 1/outputs"
+max_distances_mm, tile_names = process_point_cloud(result, output_dir)
+
+
+# Convert the max_distances list to a numpy array
+max_distances_arr = np.array(max_distances_mm)
+
+# Apply min-max scaling to the max_distances array
+max_distances_scaled = minmax_scale(max_distances_arr, feature_range=(0, 100))
+
+# Replace the original max_distances list with the scaled values
+max_distances = list(max_distances_scaled)
+new_results = result.copy()  # get a new result but replace the z values with the max distances
+for i, tile in enumerate(new_results.keys()):
+    new_results[tile][:, 2] = max_distances_mm[i]
+
+###create heatmap####
+# Create a 2D array of the max distances
+max_distances = []
+
+for tile in new_results.values():
+    max_distances.append(tile[0][2])
+
+# Create a list of lists to hold the distances for each tile
+distances_by_tile = [[] for _ in range(2)]
+
+# Iterate over the distances and append them to the appropriate inner list
+for i, distance in enumerate(max_distances):
+    tile_index = i // 113  # Calculate the index of the current tile
+    distances_by_tile[tile_index].append(distance)
+
+# Stack the lists of distances horizontally using np.column_stack
+max_distances_arr = np.column_stack(distances_by_tile)
+
+# Create the heatmap using Seaborn
+fig, ax = plt.subplots()
+sns.heatmap(max_distances_arr, cmap='plasma', ax=ax)
+
+# Inverse the y-axis
+ax.invert_yaxis()
+
+# Add a colorbar
+cbar = ax.collections[0].colorbar
+cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
+cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} mm', f'{np.max(max_distances_arr):.2f} mm']) # add units here
+# Set the title and axis labels
+ax.set_title('Mean Distance (mm) Heatmap')
+# ax.set_xlabel('Lane Tile')
+ax.set_ylabel('Longitudinal Distance (m)')
+# Update the x-axis tick labels
+x_tick_labels = ['Left Lane',"Right Lane"]  # Update these labels as needed
+ax.set_xticklabels(x_tick_labels)
+
+# Update the y-axis tick labels
+y_tick_labels = [0, 13, 26, 39, 52, 65, 77, 90, 103, 116, 129, 142, 155, 168, 181]
+# Set the number of y-axis ticks to match the number of tick labels
+num_y_ticks = len(y_tick_labels)
+ax.set_yticks(np.linspace(0, len(max_distances_arr) - 1, num_y_ticks))
+ax.set_yticklabels(y_tick_labels)
+# Show the plot
+plt.savefig('Input/Hwy 32/Track 1/outputs/heatmap_track1.svg', format="svg")
+plt.savefig('Input/Hwy 32/Track 1/outputs/heatmap_track1.png', format="png")
+plt.show()
+
+
+#%%track 2 right turn####
+pcd = o3d.io.read_point_cloud("Input/Hwy 32/Track 2 R/track2_rightturn_cleaned.ply")
 points = np.asarray(pcd.points)
 result = tile_point_cloud(points, 10 / 7, 3)
 
@@ -348,37 +424,9 @@ result = {k: v for k, v in result.items() if v.shape[0] >= 4000}
 for key in result:
     print(f"{key}: {len(result[key])} values")
 
-output_dir = "Input/Track 2 R"
+output_dir = "Input/Hwy 32/Track 2 R/outputs"
 max_distances_mm, tile_names = process_point_cloud(result, output_dir)
 
-# # Define colormap
-# norm = plt.Normalize(min(max_distances_mm), max(max_distances_mm))
-# cmap = cm.ScalarMappable(norm=norm, cmap=cm.Reds)
-#
-# # Create bar chart with colored bars
-# fig, ax = plt.subplots()
-# bars = ax.bar(tile_names, max_distances_mm, width=0.5)
-#
-# # Set color of bars
-# for i in range(len(bars)):
-#     bars[i].set_color(cmap.to_rgba(max_distances_mm[i]))
-#
-# # Add colorbar legend
-# cbar = fig.colorbar(cmap)
-# cbar.set_label('Max Distance (mm)', fontsize=14)
-#
-# # Add labels and title to chart
-# plt.xlabel('Tile', fontsize=14)
-# plt.ylabel('Max Distance (mm)', fontsize=14)
-# plt.title('Max Distance for Each Tile', fontsize=16)
-# plt.savefig('figure.png', dpi=300)
-# plt.show()
-
-
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-from sklearn.preprocessing import minmax_scale
 
 # Convert the max_distances list to a numpy array
 max_distances_arr = np.array(max_distances_mm)
@@ -412,7 +460,7 @@ max_distances_arr = np.column_stack(distances_by_tile)
 
 # Create the heatmap using Seaborn
 fig, ax = plt.subplots()
-sns.heatmap(max_distances_arr, cmap='coolwarm', ax=ax)
+sns.heatmap(max_distances_arr, cmap='plasma', ax=ax)
 
 # Inverse the y-axis
 ax.invert_yaxis()
@@ -436,11 +484,11 @@ num_y_ticks = len(y_tick_labels)
 ax.set_yticks(np.linspace(0, len(max_distances_arr) - 1, num_y_ticks))
 ax.set_yticklabels(y_tick_labels)
 # Show the plot
-plt.savefig('heatmap_right_track2.svg', format="svg")
-
+plt.savefig('Input/Hwy 32/Track 2 R/outputs/heatmap_rightturn_track2.svg', format="svg")
+plt.savefig('Input/Hwy 32/Track 2 R/outputs/heatmap_rightturn_track2.png', format="png")
 plt.show()
-###track 2 left turn####
-pcd = o3d.io.read_point_cloud("Input/Track 2 L/track2_leftturn_cleaned.ply")
+#%%track 2 left turn####
+pcd = o3d.io.read_point_cloud("Input/Hwy 32/Track 2 L/track2_leftturn_cleaned.ply")
 points = np.asarray(pcd.points)
 result = tile_point_cloud(points, 10 / 9, 3)
 
@@ -449,7 +497,7 @@ result = {k: v for k, v in result.items() if v.shape[0] >= 1000}
 for key in result:
     print(f"{key}: {len(result[key])} values")
 
-output_dir = "Input/Track 2 L"
+output_dir = "Input/Hwy 32/Track 2 L/outputs"
 max_distances_mm, tile_names = process_point_cloud(result, output_dir)
 
 # # Define colormap
@@ -513,7 +561,7 @@ max_distances_arr = np.column_stack(distances_by_tile)
 
 # Create the heatmap using Seaborn
 fig, ax = plt.subplots()
-sns.heatmap(max_distances_arr, cmap='coolwarm', ax=ax)
+sns.heatmap(max_distances_arr, cmap='plasma', ax=ax)
 
 # Inverse the y-axis
 ax.invert_yaxis()
@@ -538,12 +586,14 @@ num_y_ticks = len(y_tick_labels)
 ax.set_yticks(np.linspace(0, len(max_distances_arr) - 1, num_y_ticks))
 ax.set_yticklabels(y_tick_labels)
 # Show the plot
-plt.savefig('heatmap_left_track2.svg', format="svg")
+plt.savefig('Input/Hwy 32/Track 2 L/outputs/heatmap_left_track2.svg', format="svg")
+plt.savefig('Input/Hwy 32/Track 2 L/outputs/heatmap_left_track2.png', format="png")
+
 
 plt.show()
 
 
-##BCMoTI Section 2 Classified
+#%%BCMoTI Section 2 Classified
 import numpy as np
 import open3d as o3d
 import pandas as pd
@@ -560,7 +610,7 @@ for key in result:
 output_dir = "Input/BCMoTI/Section 2"
 max_distances_mm, tile_names = process_point_cloud(result, output_dir)
 
-##Alberta Dataset L1L2
+#%%Alberta Dataset L1L2
 pcd = o3d.io.read_point_cloud("Input/Alberta/Road_L1L2.ply")
 points = np.asarray(pcd.points)
 result = tile_point_cloud(points, 10, 2)
@@ -678,7 +728,7 @@ max_distances_arr = np.column_stack(distances_by_tile)
 
 # Create the heatmap using Seaborn
 fig, ax = plt.subplots()
-sns.heatmap(max_distances_arr, cmap='coolwarm', ax=ax)
+sns.heatmap(max_distances_arr, cmap='plasma', ax=ax)
 
 # Inverse the y-axis
 ax.invert_yaxis()
@@ -713,5 +763,217 @@ ax.set_yticks(np.linspace(0, len(max_distances_arr) - 1, num_y_ticks))
 ax.set_yticklabels(y_tick_labels)
 
 # Show the plot
-plt.savefig('Miette_LL.svg', format="svg")
+plt.savefig('Input/Miette Road/outputs/Miette.svg', format="svg")
+plt.savefig('Input/Miette Road/outputs/Miette.png', format="png")
 plt.show()
+
+#%%TWP510_3lane Road
+pcd = o3d.io.read_point_cloud("Input/TWP510 Road/TWP510_3lane/TWP510_3lane.ply")
+points = np.asarray(pcd.points)
+result = tile_point_cloud(points, 1, 3)
+
+# remove empty tiles (arrays shape 0)
+#result = {k: v for k, v in result.items() if v.shape[0] >= 1000} #not needed here since the point density is low
+for key in result:
+    print(f"{key}: {len(result[key])} values")
+
+output_dir = "Input/TWP510 Road/TWP510_3lane/outputs"
+max_distances_mm, tile_names = process_point_cloud(result, output_dir)
+# Convert the max_distances list to a numpy array
+max_distances_arr = np.array(max_distances_mm)
+
+# Apply min-max scaling to the max_distances array
+# max_distances_scaled = minmax_scale(max_distances_arr, feature_range=(0, 100))
+
+# Replace the original max_distances list with the scaled values
+# max_distances = list(max_distances_scaled)
+new_results = result.copy()  # get a new result but replace the z values with the max distances
+for i, tile in enumerate(new_results.keys()):
+    new_results[tile][:, 2] = max_distances_mm[i]
+
+###create heatmap####
+# Create a 2D array of the max distances
+max_distances = []
+
+for tile in new_results.values():
+    max_distances.append(tile[0][2])
+
+# Create a list of lists to hold the distances for each tile
+distances_by_tile = [[] for _ in range(3)]
+
+# Iterate over the distances and append them to the appropriate inner list
+for i, distance in enumerate(max_distances):
+    tile_index = i // 96  # Calculate the index of the current tile
+    distances_by_tile[tile_index].append(distance)
+
+# Stack the lists of distances horizontally using np.column_stack
+max_distances_arr = np.column_stack(distances_by_tile)
+
+# Create the heatmap using Seaborn
+fig, ax = plt.subplots()
+sns.heatmap(max_distances_arr, cmap='plasma', ax=ax)
+
+# Inverse the y-axis
+ax.invert_yaxis()
+
+# Add a colorbar
+cbar = ax.collections[0].colorbar
+cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
+cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} mm', f'{np.max(max_distances_arr):.2f} mm']) # add units here
+# Set the title and axis labels
+ax.set_title('Mean Distance (mm) Heatmap')
+# ax.set_xlabel('Lane Tile')
+ax.set_ylabel('Longitudinal Distance (m)')
+# Update the x-axis tick labels
+x_tick_labels = ['Left Lane','Middle Lane', "Right Lane"]  # Update these labels as needed
+ax.set_xticklabels(x_tick_labels)
+
+#Update the y-axis tick labels
+road_length = 96  # Length of the road in meters
+num_ticks = 15  # Number of tick labels
+
+interval = road_length / (num_ticks - 1)  # Calculate the interval between each tick
+
+# Generate the tick labels based on the interval
+y_tick_labels = [int(i * interval) for i in range(num_ticks)]
+
+# Add the unit of measurement to each tick label
+y_tick_labels = [f'{label} m' for label in y_tick_labels]
+
+# Set the number of y-axis ticks to match the number of tick labels
+num_y_ticks = len(y_tick_labels)
+ax.set_yticks(np.linspace(0, len(max_distances_arr) - 1, num_y_ticks))
+ax.set_yticklabels(y_tick_labels)
+
+# Show the plot
+plt.savefig('Input/TWP510 Road/TWP510_3lane/outputs/TWP510_3lane.svg', format="svg")
+plt.savefig('Input/TWP510 Road/TWP510_3lane/outputs/TWP510_3lane.png', format="png")
+plt.show()
+
+#%%TWP510_2lane Road
+pcd = o3d.io.read_point_cloud("Input/TWP510 Road/TWP510_2lane/TWP510_2lane.ply")
+points = np.asarray(pcd.points)
+result = tile_point_cloud(points, 1, 2)
+
+# remove empty tiles (arrays shape 0)
+#result = {k: v for k, v in result.items() if v.shape[0] >= 1000} #not needed here since the point density is low
+for key in result:
+    print(f"{key}: {len(result[key])} values")
+
+output_dir = "Input/TWP510 Road/TWP510_2lane/outputs"
+max_distances_mm, tile_names = process_point_cloud(result, output_dir)
+# Convert the max_distances list to a numpy array
+max_distances_arr = np.array(max_distances_mm)
+
+# Apply min-max scaling to the max_distances array
+# max_distances_scaled = minmax_scale(max_distances_arr, feature_range=(0, 100))
+
+# Replace the original max_distances list with the scaled values
+# max_distances = list(max_distances_scaled)
+new_results = result.copy()  # get a new result but replace the z values with the max distances
+for i, tile in enumerate(new_results.keys()):
+    new_results[tile][:, 2] = max_distances_mm[i]
+
+###create heatmap####
+# Create a 2D array of the max distances
+max_distances = []
+
+for tile in new_results.values():
+    max_distances.append(tile[0][2])
+
+# Create a list of lists to hold the distances for each tile
+distances_by_tile = [[] for _ in range(2)]
+
+# Iterate over the distances and append them to the appropriate inner list
+for i, distance in enumerate(max_distances):
+    tile_index = i // 95  # Calculate the index of the current tile
+    distances_by_tile[tile_index].append(distance)
+
+# Stack the lists of distances horizontally using np.column_stack
+max_distances_arr = np.column_stack(distances_by_tile)
+
+# Create the heatmap using Seaborn
+fig, ax = plt.subplots()
+sns.heatmap(max_distances_arr, cmap='plasma', ax=ax)
+
+# Inverse the y-axis
+ax.invert_yaxis()
+
+# Add a colorbar
+cbar = ax.collections[0].colorbar
+cbar.set_ticks([np.min(max_distances_arr), np.max(max_distances_arr)])
+cbar.set_ticklabels([f'{np.min(max_distances_arr):.2f} mm', f'{np.max(max_distances_arr):.2f} mm']) # add units here
+# Set the title and axis labels
+ax.set_title('Mean Distance (mm) Heatmap')
+# ax.set_xlabel('Lane Tile')
+ax.set_ylabel('Longitudinal Distance (m)')
+# Update the x-axis tick labels
+x_tick_labels = ['Left Lane', "Right Lane"]  # Update these labels as needed
+ax.set_xticklabels(x_tick_labels)
+
+#Update the y-axis tick labels
+road_length = 95  # Length of the road in meters
+num_ticks = 15  # Number of tick labels
+
+interval = road_length / (num_ticks - 1)  # Calculate the interval between each tick
+
+# Generate the tick labels based on the interval
+y_tick_labels = [int(i * interval) for i in range(num_ticks)]
+
+# Add the unit of measurement to each tick label
+y_tick_labels = [f'{label} m' for label in y_tick_labels]
+
+# Set the number of y-axis ticks to match the number of tick labels
+num_y_ticks = len(y_tick_labels)
+ax.set_yticks(np.linspace(0, len(max_distances_arr) - 1, num_y_ticks))
+ax.set_yticklabels(y_tick_labels)
+
+# Show the plot
+plt.savefig('Input/TWP510 Road/TWP510_2lane/outputs/TWP510_2lane.svg', format="svg")
+plt.savefig('Input/TWP510 Road/TWP510_2lane/outputs/TWP510_2lane.png', format="png")
+plt.show()
+
+
+#looks nice but not better than the seaborn heatmap
+# from plotnine import *
+# from plotnine.data import mpg
+#
+# # Create a 2D array of the max distances
+# max_distances = []
+#
+# for tile in new_results.values():
+#     max_distances.append(tile[0][2])
+#
+# # Create a list of lists to hold the distances for each tile
+# distances_by_tile = [[] for _ in range(2)]
+#
+# # Iterate over the distances and append them to the appropriate inner list
+# for i, distance in enumerate(max_distances):
+#     tile_index = i // 95  # Calculate the index of the current tile
+#     distances_by_tile[tile_index].append(distance)
+#
+# # Stack the lists of distances horizontally using np.column_stack
+# max_distances_arr = np.column_stack(distances_by_tile)
+#
+# # Create the dataframe for the heatmap
+# df = pd.DataFrame(max_distances_arr, columns=['Left Lane', 'Right Lane'])
+# df['Longitudinal Distance'] = range(0, len(df))
+#
+# # Reshape the dataframe for plotting
+# df = df.melt('Longitudinal Distance', var_name='Lane', value_name='Distance')
+#
+# # Create the heatmap using plotnine
+# heatmap = (
+#     ggplot(df, aes(x='Lane', y='Longitudinal Distance', fill='Distance'))
+#     + geom_tile(color='white')
+#     + scale_fill_cmap(cmap_name='viridis', name='Mean Distance (mm)')
+#     + labs(title='Mean Distance (mm) Heatmap', x='', y='Longitudinal Distance (m)')
+#     + theme_minimal()
+#     + theme(axis_text_x=element_text(angle=90, hjust=1)))
+#
+# # Save the plot
+# heatmap.save('Input/TWP510 Road/TWP510_2lane/outputs/TWP510_2lane.png', dpi=300)
+#
+# # Show the plot
+# print(heatmap)
+
