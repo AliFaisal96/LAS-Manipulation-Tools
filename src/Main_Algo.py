@@ -7,6 +7,8 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import minmax_scale
+import matplotlib as mpl
+
 
 print(os.getcwd())
 
@@ -382,7 +384,9 @@ for i, distance in enumerate(max_distances):
 
 # Stack the lists of distances horizontally using np.column_stack
 max_distances_arr = np.column_stack(distances_by_tile)
-
+plt.rcParams['font.family'] = 'Times New Roman'
+new_rc_params = {'text.usetex': False, "svg.fonttype": 'none'}
+mpl.rcParams.update(new_rc_params)
 # Create the heatmap using Seaborn
 fig, ax = plt.subplots()
 sns.heatmap(max_distances_arr, cmap='plasma', ax=ax)
@@ -461,7 +465,10 @@ max_distances_arr = np.column_stack(distances_by_tile)
 # Create the heatmap using Seaborn
 fig, ax = plt.subplots()
 sns.heatmap(max_distances_arr, cmap='plasma', ax=ax)
-
+plt.rcParams['font.family'] = 'Times New Roman'
+new_rc_params = {'text.usetex': False, "svg.fonttype": 'none'}
+mpl.rcParams.update(new_rc_params)
+# Create the heatmap using Seaborn
 # Inverse the y-axis
 ax.invert_yaxis()
 
@@ -563,6 +570,9 @@ max_distances_arr = np.column_stack(distances_by_tile)
 fig, ax = plt.subplots()
 sns.heatmap(max_distances_arr, cmap='plasma', ax=ax)
 
+plt.rcParams['font.family'] = 'Times New Roman'
+new_rc_params = {'text.usetex': False, "svg.fonttype": 'none'}
+mpl.rcParams.update(new_rc_params)
 # Inverse the y-axis
 ax.invert_yaxis()
 
@@ -730,6 +740,9 @@ max_distances_arr = np.column_stack(distances_by_tile)
 fig, ax = plt.subplots()
 sns.heatmap(max_distances_arr, cmap='plasma', ax=ax)
 
+plt.rcParams['font.family'] = 'Times New Roman'
+new_rc_params = {'text.usetex': False, "svg.fonttype": 'none'}
+mpl.rcParams.update(new_rc_params)
 # Inverse the y-axis
 ax.invert_yaxis()
 
@@ -813,6 +826,9 @@ max_distances_arr = np.column_stack(distances_by_tile)
 fig, ax = plt.subplots()
 sns.heatmap(max_distances_arr, cmap='plasma', ax=ax)
 
+plt.rcParams['font.family'] = 'Times New Roman'
+new_rc_params = {'text.usetex': False, "svg.fonttype": 'none'}
+mpl.rcParams.update(new_rc_params)
 # Inverse the y-axis
 ax.invert_yaxis()
 
