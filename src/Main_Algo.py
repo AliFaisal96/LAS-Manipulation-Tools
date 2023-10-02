@@ -8,13 +8,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import minmax_scale
 import matplotlib as mpl
+import laspy
 
 
 print(os.getcwd())
-
+os.chdir("C:/Users/Ali\OneDrive - UBC\Desktop\Ph.D. Work\PCTool\PointCloudTool-master")
 
 # Load the point cloud
-pcd = o3d.io.read_point_cloud("Input/Track 1/track1_pc_cleaned.ply")
+pcd = o3d.io.read_point_cloud("Input/Hwy 32/Track 1/track1_pc_cleaned.ply")
 
 # Convert the point cloud to a NumPy array
 points = np.asarray(pcd.points)
@@ -82,27 +83,8 @@ output_file = "Input/Track 1/tiled_point_clouds.csv"
 save_all_tiles_to_csv(result, output_file)
 
 
-# def plot_tiles_3d(tiled_point_clouds, selected_tile_keys):
-#     fig = plt.figure()
-#     ax = fig.add_subplot(111, projection='3d')
-#
-#     for tile_key in selected_tile_keys:
-#         if tile_key in tiled_point_clouds:
-#             tile_points = tiled_point_clouds[tile_key]
-#             ax.scatter(tile_points[:, 0], tile_points[:, 1], tile_points[:, 2], label=str(tile_key))
-#
-#     ax.set_xlabel('X')
-#     ax.set_ylabel('Y')
-#     ax.set_zlabel('Z')
-#     ax.legend()
-#     plt.show()
-#
-#
-# # Select the tile keys you want to plot (use the keys from your tiled point cloud)
-# selected_tile_keys = [(0, 1, 0), (0, 2, 0), (1, 1, 0), (1, 2, 0)]
-#
-# # Plot the selected tiles
-# plot_tiles_3d(result, selected_tile_keys)
+# Define a function to calculate the average distance between a
+# plane and the farthest 20 points below the plane in the z-direction.
 def avg_distance_to_plane_below(points, plane):
     """
     Calculate the average distance between a plane and the farthest 20 points below the plane in the z-direction.
@@ -768,7 +750,7 @@ interval = road_length / (num_ticks - 1)  # Calculate the interval between each 
 y_tick_labels = [int(i * interval) for i in range(num_ticks)]
 
 # Add the unit of measurement to each tick label
-y_tick_labels = [f'{label} m' for label in y_tick_labels]
+y_tick_labels = [str(label) for label in y_tick_labels]
 
 # Set the number of y-axis ticks to match the number of tick labels
 num_y_ticks = len(y_tick_labels)
@@ -854,7 +836,7 @@ interval = road_length / (num_ticks - 1)  # Calculate the interval between each 
 y_tick_labels = [int(i * interval) for i in range(num_ticks)]
 
 # Add the unit of measurement to each tick label
-y_tick_labels = [f'{label} m' for label in y_tick_labels]
+y_tick_labels = [str(label) for label in y_tick_labels]
 
 # Set the number of y-axis ticks to match the number of tick labels
 num_y_ticks = len(y_tick_labels)
@@ -993,4 +975,3 @@ plt.show()
 # # Show the plot
 # print(heatmap)
 
-d
